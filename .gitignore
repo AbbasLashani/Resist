@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Logs
+*.log
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
