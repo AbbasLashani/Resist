@@ -1,0 +1,2 @@
+# ابتدا فقط necessities
+tkinter
