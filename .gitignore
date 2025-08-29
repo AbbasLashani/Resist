@@ -1,7 +1,7 @@
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 
 # Virtual environments
 .venv/
@@ -19,3 +19,24 @@ env/
 *.sqlite
 *.sqlite3
 *.db
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Build / Dist (in case of packaging later)
+build/
+dist/
+*.egg-info/
+
+# Coverage / Testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Local settings (if you have any secret config)
+config.local.py

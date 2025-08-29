@@ -6,8 +6,10 @@ from pathlib import Path
 class Config:
     def __init__(self):
         self.config_path = Path(__file__).parent.parent / "config.json"
+        self.locales_path = Path(__file__).parent.parent / "locales"
         self.settings = self.load_config()
-        self.language = self.settings.get("language", "fa")
+        self.current_language = self.settings.get("language", "fa")
+        self.translations = self.load_translations()
     
     def load_config(self):
         """بارگذاری تنظیمات از فایل JSON"""
@@ -26,6 +28,20 @@ class Config:
             self.save_config(default_config)
             return default_config
     
+    def load_translations(self):
+        """بارگذاری ترجمه‌ها از فایل‌های زبان"""
+        translation_file = self.locales_path / f"{self.current_language}.json"
+        if translation_file.exists():
+            with open(translation_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            # Fallback به انگلیسی اگر فایل زبان وجود نداشت
+            en_file = self.locales_path / "en.json"
+            if en_file.exists():
+                with open(en_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return {}
+    
     def save_config(self, config_data=None):
         """ذخیره تنظیمات در فایل JSON"""
         if config_data is None:
@@ -42,6 +58,11 @@ class Config:
         """تعیین مقدار یک تنظیم"""
         self.settings[key] = value
         self.save_config()
+        
+        # اگر زبان تغییر کرد، ترجمه‌ها را مجدداً بارگذاری کن
+        if key == "language" and value != self.current_language:
+            self.current_language = value
+            self.translations = self.load_translations()
     
     def add_recent_file(self, file_path):
         """افزودن فایل به لیست اخیر"""
@@ -52,8 +73,13 @@ class Config:
         self.settings["recent_files"] = self.settings["recent_files"][:10]
         self.save_config()
     
-    def get_text(self, key, default=None):
-        """دریافت متن ترجمه شده (برای پشتیبانی از چندزبانه در آینده)"""
-        # در این نسخه اولیه، مستقیماً مقدار را برمی‌گردانیم
-        # در آینده می‌توانیم سیستم ترجمه اضافه کنیم
-        return default
+    def t(self, key, default=None):
+        """دریافت متن ترجمه شده (مخفف translate)"""
+        return self.translations.get(key, default or key)
+    
+    def set_language(self, language):
+        """تغییر زبان برنامه"""
+        if language in ["fa", "en"]:
+            self.set("language", language)
+            return True
+        return False

@@ -5,12 +5,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class DashboardModule(tk.Frame):
-    module_name = "داشبورد"
-    
-    def __init__(self, parent, app):
+class DashboardModule(ttk.Frame):
+    def __init__(self, parent, app, config):
         super().__init__(parent)
         self.app = app
+        self.config = config
         self.setup_ui()
         
     def setup_ui(self):
@@ -18,7 +17,7 @@ class DashboardModule(tk.Frame):
         # عنوان
         title_label = ttk.Label(
             self,
-            text="📊 داشبورد اصلی",
+            text="📊 " + self.config.t("dashboard"),
             font=("Tahoma", 16, "bold")
         )
         title_label.pack(pady=20)
@@ -30,11 +29,12 @@ class DashboardModule(tk.Frame):
         self.create_quick_stats()
         
         # دکمه بروزرسانی
-        refresh_btn = ttk.Button(self, text="بروزرسانی آمار", command=self.refresh_data)
+        refresh_btn = ttk.Button(
+            self, 
+            text=self.config.t("refresh_stats"), 
+            command=self.refresh_data
+        )
         refresh_btn.pack(pady=10)
-        
-        # ثبت شنونده برای رویدادها
-        self.app.event_bus.subscribe("data_updated", self.refresh_data)
         
         # بارگذاری اولیه داده‌ها
         self.refresh_data()
@@ -44,12 +44,12 @@ class DashboardModule(tk.Frame):
         cards_frame = ttk.Frame(self)
         cards_frame.pack(fill=tk.X, pady=10, padx=20)
         
-        # داده‌های نمونه
+        # داده‌های نمونه با استفاده از ترجمه‌ها
         self.cards_data = [
-            {"title": "مقالات", "value": "0", "icon": "📄", "color": "#3498db"},
-            {"title": "زمان مطالعه", "value": "0 ساعت", "icon": "⏱️", "color": "#2ecc71"},
-            {"title": "یادداشت‌ها", "value": "0", "icon": "📝", "color": "#e74c3c"},
-            {"title": "پروژه‌ها", "value": "0", "icon": "📁", "color": "#f39c12"}
+            {"title": self.config.t("papers"), "value": "0", "icon": "📄", "color": "#3498db"},
+            {"title": self.config.t("study_time"), "value": "0 ساعت", "icon": "⏱️", "color": "#2ecc71"},
+            {"title": self.config.t("notes"), "value": "0", "icon": "📝", "color": "#e74c3c"},
+            {"title": self.config.t("projects"), "value": "0", "icon": "📁", "color": "#f39c12"}
         ]
         
         self.card_widgets = []
@@ -105,17 +105,17 @@ class DashboardModule(tk.Frame):
         """ایجاد بخش آمار سریع"""
         stats_frame = ttk.LabelFrame(
             self, 
-            text=" آمار سریع ",
+            text=" " + self.config.t("quick_stats") + " ",
             padding=15
         )
         stats_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=20)
         
-        # آمار نمونه
+        # آمار نمونه با استفاده از ترجمه‌ها
         self.stats_data = [
-            ("مقالات خوانده شده", "0"),
-            ("مقالات در حال مطالعه", "0"),
-            ("مقالات برنامه‌ریزی شده", "0"),
-            ("میانگین زمان مطالعه روزانه", "0 دقیقه")
+            (self.config.t("read_papers"), "0"),
+            (self.config.t("reading_papers"), "0"),
+            (self.config.t("planned_papers"), "0"),
+            (self.config.t("avg_study_time"), "0 دقیقه")
         ]
         
         self.stat_widgets = []
@@ -171,7 +171,7 @@ class DashboardModule(tk.Frame):
             avg_study_time = total_time / (papers_count or 1)
             self.stat_widgets[3].config(text=f"{avg_study_time:.1f} دقیقه")
             
-            logger.info("داده‌های داشبورد با موفقیت بروزرسانی شدند")
+            logger.info(self.config.t("dashboard_data_updated"))
             
         except Exception as e:
-            logger.error(f"خطا در بروزرسانی داده‌های داشبورد: {e}")
+            logger.error(f"{self.config.t('error_updating_dashboard')}: {e}")
