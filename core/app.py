@@ -1,140 +1,151 @@
 # research_assistant/core/app.py
 import tkinter as tk
 from tkinter import ttk
-import json
-import os
+import importlib
+from pathlib import Path
+import logging
+
+from .config import Config
+from .event_bus import EventBus
+from .database import Database
+
+# تنظیمات لاگ‌گیری
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ResearchAssistantApp:
     def __init__(self, root):
         self.root = root
-        self.setup_app()
-        self.load_config()
+        self.root.title("دستیار تحقیقات هوشمند")
+        self.root.geometry("1200x700")
+        
+        # Initialize core components
+        self.config = Config()
+        self.event_bus = EventBus()
+        self.db = Database(self.config)
+        
+        # Setup UI
         self.setup_ui()
         
-    def setup_app(self):
-        """تنظیمات اولیه برنامه"""
-        self.root.title("دستیار هوشمند تحقیقات")
-        self.root.geometry("1000x700")
-        self.root.minsize(800, 600)
-        
-        # مسیرهای مهم
-        self.base_dir = os.path.dirname(os.path.dirname(__file__))
-        self.config_path = os.path.join(self.base_dir, "config.json")
-        self.data_dir = os.path.join(self.base_dir, "data")
-        
-        # ایجاد پوشه‌های لازم
-        os.makedirs(self.data_dir, exist_ok=True)
-        
-        # سیستم ماژول‌ها
+        # Load modules
         self.modules = {}
-        self.current_module = None
+        self.load_modules()
         
-    def load_config(self):
-        """بارگذاری تنظیمات"""
-        self.config = {
-            "theme": "default",
-            "language": "fa",
-            "recent_files": [],
-            "user_preferences": {}
-        }
+        # Show dashboard by default
+        self.show_module("dashboard")
         
-        if os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
-                    self.config.update(json.load(f))
-            except:
-                pass
-                
-    def save_config(self):
-        """ذخیره تنظیمات"""
-        with open(self.config_path, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, ensure_ascii=False, indent=2)
-            
+        # Subscribe to events
+        self.event_bus.subscribe("module_change", self.show_module)
+        self.event_bus.subscribe("file_opened", self.handle_file_opened)
+        
+        logger.info("برنامه با موفقیت راه‌اندازی شد")
+    
     def setup_ui(self):
-        """ایجاد رابط کاربری اصلی"""
-        # فریم اصلی
-        self.main_frame = ttk.Frame(self.root)
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        """ایجاد رابط کاربری اصلی با نوار کناری"""
+        # ایجاد فریم اصلی با دو بخش
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # نوار کناری (10% عرض)
+        self.sidebar = ttk.Frame(main_frame, width=120, relief=tk.SUNKEN)
+        self.sidebar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.sidebar.pack_propagate(False)  # جلوگیری از تغییر اندازه خودکار
+        
+        # بخش اصلی (90% عرض)
+        self.main_content = ttk.Frame(main_frame)
+        self.main_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # ایجاد منوی کناری
+        self.create_sidebar_menu()
         
         # نوار وضعیت
-        self.setup_status_bar()
-        
-        # نمایش صفحه خوش‌آمدگویی
-        self.show_welcome_screen()
-        
-    def setup_status_bar(self):
-        """ایجاد نوار وضعیت"""
-        self.status_frame = ttk.Frame(self.root)
-        self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        
-        self.status_label = ttk.Label(self.status_frame, text="آماده")
-        self.status_label.pack(side=tk.LEFT, padx=5)
-        
-        ttk.Label(self.status_frame, text="دستیار هوشمند تحقیقات v0.1").pack(side=tk.RIGHT, padx=5)
-        
-    def show_welcome_screen(self):
-        """نمایش صفحه خوش‌آمدگویی"""
-        welcome_frame = ttk.Frame(self.main_frame)
-        welcome_frame.pack(fill=tk.BOTH, expand=True, padx=50, pady=50)
-        
-        # عنوان
+        self.status_bar = ttk.Label(self.root, text="آماده", relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    def create_sidebar_menu(self):
+        """ایجاد منوی کناری با آیکون‌های ماژول‌ها"""
+        # عنوان نوار کناری
         title_label = ttk.Label(
-            welcome_frame, 
-            text="🌟 به دستیار هوشمند تحقیقات خوش آمدید",
-            font=("Tahoma", 20, "bold")
+            self.sidebar,
+            text="ماژول‌ها",
+            font=("Tahoma", 12, "bold")
         )
         title_label.pack(pady=20)
         
-        # توضیحات
-        description = """
-        این نرم‌افزار به شما در مدیریت و سازماندهی تحقیقات کمک می‌کند.
+        # دکمه‌های ماژول‌ها به صورت موزاییکی
+        self.module_buttons = {}
+        modules = [
+            ("dashboard", "📊", "داشبورد"),
+            ("datasheets", "📄", "مقالات"),
+            ("research", "🔍", "تحقیق"),
+            ("analysis", "📈", "تحلیل"),
+            ("search", "🔎", "جستجو")
+        ]
         
-        قابلیت‌های اصلی:
-        • مدیریت مقالات و منابع تحقیقاتی
-        • برنامه‌ریزی و زمان‌بندی مطالعه
-        • جستجوی هوشمند در پایگاه‌های علمی
-        • تحلیل و تولید گزارش‌های آماری
-        • سیستم یادداشت‌گذاری و حاشیه‌نویسی
-        
-        برای شروع، از منوی بالا ماژول مورد نظر را انتخاب کنید.
-        """
-        
-        desc_label = ttk.Label(
-            welcome_frame, 
-            text=description,
-            font=("Tahoma", 12),
-            justify=tk.CENTER
-        )
-        desc_label.pack(pady=20)
-        
-        # دکمه شروع
-        start_button = ttk.Button(
-            welcome_frame,
-            text="شروع کار",
-            command=self.on_start
-        )
-        start_button.pack(pady=10)
-        
-    def on_start(self):
-        """وقتی کاربر دکمه شروع را می‌زند"""
-        self.status_label.config(text="برنامه آماده است")
-        
-    def register_module(self, module_name, module_class):
-        """ثبت یک ماژول جدید"""
-        self.modules[module_name] = module_class
-        
-    def activate_module(self, module_name):
-        """فعال کردن یک ماژول"""
-        if module_name in self.modules and self.current_module != module_name:
-            # غیرفعال کردن ماژول قبلی
-            if self.current_module:
-                pass  # اینجا بعداً پیاده‌سازی می‌شود
-                
-            # فعال کردن ماژول جدید
-            self.current_module = module_name
-            module_instance = self.modules[module_name](self)
-            return module_instance
+        for module_name, icon, text in modules:
+            btn_frame = ttk.Frame(self.sidebar)
+            btn_frame.pack(pady=5, padx=10, fill=tk.X)
             
-    def __del__(self):
-        """تمیزکاری هنگام بسته شدن"""
-        self.save_config()
+            btn = ttk.Button(
+                btn_frame,
+                text=f"{icon} {text}",
+                command=lambda m=module_name: self.event_bus.publish("module_change", m),
+                width=15
+            )
+            btn.pack(fill=tk.X)
+            self.module_buttons[module_name] = btn
+    
+    def load_modules(self):
+        """بارگذاری ماژول‌ها از پوشه modules"""
+        modules_dir = Path(__file__).parent.parent / "modules"
+        for module_dir in modules_dir.iterdir():
+            if module_dir.is_dir() and (module_dir / "__init__.py").exists():
+                module_name = module_dir.name
+                try:
+                    # import module
+                    module = importlib.import_module(f"modules.{module_name}.{module_name}_module")
+                    module_class = getattr(module, f"{module_name.capitalize()}Module")
+                    # create instance in main_content frame
+                    module_instance = module_class(self.main_content, self)
+                    self.modules[module_name] = module_instance
+                    
+                    logger.info(f"ماژول {module_name} با موفقیت بارگذاری شد")
+                except ImportError as e:
+                    logger.error(f"خطا در بارگذاری ماژول {module_name}: {e}")
+                except Exception as e:
+                    logger.error(f"خطای غیرمنتظره در بارگذاری ماژول {module_name}: {e}")
+    
+    def show_module(self, module_name):
+        """نمایش ماژول درخواستی در بخش اصلی"""
+        # پنهان کردن تمام ماژول‌ها
+        for module in self.modules.values():
+            module.pack_forget()
+        
+        # نمایش ماژول انتخاب شده
+        if module_name in self.modules:
+            self.modules[module_name].pack(fill=tk.BOTH, expand=True)
+            self.status_bar.config(text=f"ماژول {module_name} فعال است")
+            logger.info(f"ماژول {module_name} نمایش داده شد")
+        else:
+            self.status_bar.config(text=f"ماژول {module_name} یافت نشد")
+            logger.warning(f"ماژول {module_name} یافت نشد")
+    
+    def open_file(self):
+        """باز کردن فایل"""
+        from tkinter import filedialog
+        file_path = filedialog.askopenfilename(
+            title="باز کردن فایل",
+            filetypes=[("PDF Files", "*.pdf"), ("Text Files", "*.txt"), ("All Files", "*.*")]
+        )
+        if file_path:
+            self.config.add_recent_file(file_path)
+            self.event_bus.publish("file_opened", file_path)
+            logger.info(f"فایل {file_path} باز شد")
+    
+    def handle_file_opened(self, file_path):
+        """مدیریت فایل باز شده"""
+        if file_path.endswith('.pdf'):
+            self.event_bus.publish("module_change", "datasheets")
+            self.event_bus.publish("pdf_file_opened", file_path)
+        
+        logger.info(f"فایل {file_path} پردازش شد")
