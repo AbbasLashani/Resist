@@ -13,6 +13,7 @@ sys.path.insert(0, BASE_DIR)
 
 from core.config import Config
 from core.database import Database
+from core.event_bus import EventBus
 
 # تنظیمات لاگ‌گیری
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ class ResearchAssistantApp:
     def __init__(self, root):
         self.root = root
         self.config = Config()
+        self.event_bus = EventBus()
         self.db = Database(self.config)
         self.setup_app()
         self.setup_ui()
@@ -58,20 +60,50 @@ class ResearchAssistantApp:
         self.current_module_instance = None
         
     def setup_ui(self):
-        """ایجاد رابط کاربری اصلی"""
-        # فریم اصلی
-        self.main_frame = ttk.Frame(self.root)
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        """ایجاد رابط کاربری اصلی با نوار کناری"""
+        # فریم اصلی که شامل نوار کناری و محتوای اصلی است
+        main_container = ttk.Frame(self.root)
+        main_container.pack(fill=tk.BOTH, expand=True)
+        
+        # نوار کناری (سمت راست - 20% عرض)
+        self.sidebar = ttk.Frame(main_container, width=200, relief=tk.SUNKEN)
+        self.sidebar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.sidebar.pack_propagate(False)  # جلوگیری از تغییر سایز خودکار
+        
+        # بخش محتوای اصلی (سمت چپ - 80% عرض)
+        self.main_content = ttk.Frame(main_container)
+        self.main_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # ایجاد منوی کناری
+        self.create_sidebar()
         
         # ایجاد منوی اصلی
         self.setup_main_menu()
         
         # ناحیه محتوای ماژول‌ها
-        self.content_frame = ttk.Frame(self.main_frame)
+        self.content_frame = ttk.Frame(self.main_content)
         self.content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # نوار وضعیت
         self.setup_status_bar()
+        
+    def create_sidebar(self):
+        """ایجاد نوار کناری با دکمه‌های ماژول‌ها"""
+        # عنوان نوار کناری
+        title_label = ttk.Label(
+            self.sidebar,
+            text="🧪 " + self.config.t("modules"),
+            font=("Tahoma", 12, "bold")
+        )
+        title_label.pack(pady=20)
+        
+        # جداکننده
+        separator = ttk.Separator(self.sidebar, orient=tk.HORIZONTAL)
+        separator.pack(fill=tk.X, padx=10, pady=10)
+        
+        # فریم برای دکمه‌های ماژول‌ها
+        self.buttons_frame = ttk.Frame(self.sidebar)
+        self.buttons_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
     def setup_main_menu(self):
         """ایجاد منوی اصلی"""
@@ -91,10 +123,6 @@ class ResearchAssistantApp:
         
         file_menu.add_separator()
         file_menu.add_command(label=self.config.t("exit"), command=self.root.quit)
-        
-        # منوی ماژول‌ها
-        self.modules_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label=self.config.t("modules"), menu=self.modules_menu)
         
         # منوی کمک
         help_menu = tk.Menu(menu_bar, tearoff=0)
@@ -136,8 +164,37 @@ class ResearchAssistantApp:
         # ماژول‌های خارجی (از پوشه modules)
         self.load_external_modules()
         
+        # اضافه کردن دکمه‌های ماژول‌ها به نوار کناری
+        self.add_module_buttons_to_sidebar()
+        
         # نمایش داشبورد به عنوان صفحه اصلی
         self.activate_module("dashboard")
+        
+    def add_module_buttons_to_sidebar(self):
+        """اضافه کردن دکمه‌های ماژول‌ها به نوار کناری"""
+        # پاک کردن دکمه‌های قبلی
+        for widget in self.buttons_frame.winfo_children():
+            widget.destroy()
+        
+        # اضافه کردن دکمه‌های ماژول‌ها
+        modules_info = [
+            ("dashboard", "📊", self.config.t("dashboard")),
+            ("articles", "📄", self.config.t("articles_management")),
+            ("research", "🔍", self.config.t("research")),
+            ("analysis", "📈", self.config.t("analysis")),
+            ("search", "🔎", self.config.t("search"))
+        ]
+        
+        for module_name, icon, text in modules_info:
+            if module_name in self.modules:
+                # ایجاد دکمه با آیکون و متن
+                btn = ttk.Button(
+                    self.buttons_frame,
+                    text=f"{icon} {text}",
+                    command=lambda m=module_name: self.activate_module(m),
+                    width=20
+                )
+                btn.pack(pady=5, padx=10, fill=tk.X)
         
     def register_builtin_modules(self):
         """ثبت ماژول‌های داخلی"""
@@ -157,13 +214,6 @@ class ResearchAssistantApp:
             # پیدا کردن کلاس DashboardModule
             if hasattr(dashboard_module, 'DashboardModule'):
                 self.modules["dashboard"] = dashboard_module.DashboardModule
-                
-                # اضافه کردن به منو
-                self.modules_menu.add_command(
-                    label=self.config.t("dashboard"),
-                    command=lambda: self.activate_module("dashboard")
-                )
-                
                 logger.info("ماژول داشبورد با موفقیت بارگذاری شد")
             else:
                 logger.error("کلاس DashboardModule در ماژول داشبورد یافت نشد")
@@ -226,14 +276,6 @@ class ResearchAssistantApp:
                 
             # ثبت ماژول
             self.modules[module_name] = module_class
-            
-            # اضافه کردن به منو
-            display_name = self.config.t(module_name, module_name.capitalize())
-            self.modules_menu.add_command(
-                label=display_name,
-                command=lambda name=module_name: self.activate_module(name)
-            )
-            
             logger.info(f"ماژول {module_name} با موفقیت بارگذاری شد")
                     
         except Exception as e:
@@ -242,7 +284,6 @@ class ResearchAssistantApp:
     def activate_module(self, module_name):
         """فعال کردن یک ماژول"""
         logger.info(f"تلاش برای فعال‌سازی ماژول: {module_name}")
-        logger.info(f"ماژول‌های موجود: {list(self.modules.keys())}")
         
         if module_name in self.modules:
             try:
@@ -257,6 +298,13 @@ class ResearchAssistantApp:
                     self,
                     self.config
                 )
+                
+                # نمایش فریم ماژول
+                self.current_module_instance.pack(fill=tk.BOTH, expand=True)
+                
+                # اگر ماژول متد on_activate دارد، آن را فراخوانی کن
+                if hasattr(self.current_module_instance, 'on_activate'):
+                    self.current_module_instance.on_activate()
                 
                 logger.info(f"ماژول {module_name} با موفقیت فعال شد")
                 self.status_var.set(self.config.t("status_ready"))

@@ -34,5 +34,6 @@
   "info": "اطلاعات",
   "loading_module": "در حال بارگذاری ماژول",
   "error": "خطا",
-  "warning": "هشدار"
+  "warning": "هشدار",
+  "module_not_found": "ماژول یافت نشد"
 }

@@ -74,7 +74,7 @@ class Config:
         self.save_config()
     
     def t(self, key, default=None):
-        """دریافت متن ترجمه شده (مخفف translate)"""
+        """دریافت متن ترجمه شده"""
         return self.translations.get(key, default or key)
     
     def set_language(self, language):

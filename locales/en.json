@@ -34,5 +34,6 @@
   "info": "Information",
   "loading_module": "Loading module",
   "error": "Error",
-  "warning": "Warning"
+  "warning": "Warning",
+  "module_not_found": "Module not found"
 }

@@ -1,7 +1,7 @@
 {
-  "theme": "default",
-  "language": "fa",
-  "recent_files": [],
-  "user_preferences": {},
-  "database_path": "research_db.sqlite"
+    "theme": "default",
+    "language": "fa",
+    "recent_files": [],
+    "user_preferences": {},
+    "database_path": "research_db.sqlite"
 }
