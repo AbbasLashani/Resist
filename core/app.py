@@ -4,9 +4,15 @@ from tkinter import ttk, messagebox
 import os
 import importlib.util
 import sys
-from core.config import Config
-from core.database import Database  # اضافه کردن import پایگاه داده
 import logging
+import traceback
+
+# اضافه کردن مسیر اصلی پروژه به sys.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, BASE_DIR)
+
+from core.config import Config
+from core.database import Database
 
 # تنظیمات لاگ‌گیری
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +22,7 @@ class ResearchAssistantApp:
     def __init__(self, root):
         self.root = root
         self.config = Config()
-        self.db = Database(self.config)  # ایجاد نمونه پایگاه داده
+        self.db = Database(self.config)
         self.setup_app()
         self.setup_ui()
         self.load_modules()
@@ -29,13 +35,16 @@ class ResearchAssistantApp:
         
         # تنظیم راست به چپ برای فارسی
         if self.config.current_language == "fa":
-            self.root.tk.call('tk', 'scaling', 1.2)
+            try:
+                self.root.tk.call('tk', 'scaling', 1.2)
+            except:
+                pass
             self.root.option_add('*justify', 'right')
             self.root.option_add('*direction', 'rtl')
             self.root.option_add('*font', 'Tahoma 10')
         
         # مسیرهای مهم
-        self.base_dir = os.path.dirname(os.path.dirname(__file__))
+        self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.data_dir = os.path.join(self.base_dir, "data")
         self.modules_dir = os.path.join(self.base_dir, "modules")
         
@@ -45,7 +54,7 @@ class ResearchAssistantApp:
         
         # سیستم ماژول‌ها
         self.modules = {}
-        self.current_module = "dashboard"  # شروع با داشبورد
+        self.current_module = "dashboard"
         self.current_module_instance = None
         
     def setup_ui(self):
@@ -63,9 +72,6 @@ class ResearchAssistantApp:
         
         # نوار وضعیت
         self.setup_status_bar()
-        
-        # نمایش داشبورد به عنوان صفحه اصلی
-        self.activate_module("dashboard")
         
     def setup_main_menu(self):
         """ایجاد منوی اصلی"""
@@ -114,32 +120,56 @@ class ResearchAssistantApp:
             widget.destroy()
             
         if self.current_module_instance:
-            self.current_module_instance.destroy()
+            try:
+                self.current_module_instance.destroy()
+            except:
+                pass
             self.current_module_instance = None
         
     def load_modules(self):
         """بارگذاری ماژول‌ها"""
+        logger.info("بارگذاری ماژول‌ها شروع شد")
+        
         # ماژول‌های داخلی
         self.register_builtin_modules()
         
         # ماژول‌های خارجی (از پوشه modules)
         self.load_external_modules()
         
+        # نمایش داشبورد به عنوان صفحه اصلی
+        self.activate_module("dashboard")
+        
     def register_builtin_modules(self):
         """ثبت ماژول‌های داخلی"""
         try:
-            # فقط ماژول داشبورد به عنوان ماژول داخلی
-            from modules.dashboard.dashboard_module import DashboardModule
-            self.modules["dashboard"] = DashboardModule
+            # مسیر ماژول داشبورد
+            dashboard_path = os.path.join(self.modules_dir, "dashboard", "dashboard_module.py")
             
-            # اضافه کردن به منو
-            self.modules_menu.add_command(
-                label=self.config.t("dashboard"),
-                command=lambda: self.activate_module("dashboard")
-            )
+            if not os.path.exists(dashboard_path):
+                logger.error(f"فایل ماژول داشبورد یافت نشد: {dashboard_path}")
+                return
+                
+            # بارگذاری ماژول با importlib
+            spec = importlib.util.spec_from_file_location("dashboard_module", dashboard_path)
+            dashboard_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(dashboard_module)
             
-        except ImportError as e:
-            print(f"خطا در بارگذاری ماژول‌های داخلی: {e}")
+            # پیدا کردن کلاس DashboardModule
+            if hasattr(dashboard_module, 'DashboardModule'):
+                self.modules["dashboard"] = dashboard_module.DashboardModule
+                
+                # اضافه کردن به منو
+                self.modules_menu.add_command(
+                    label=self.config.t("dashboard"),
+                    command=lambda: self.activate_module("dashboard")
+                )
+                
+                logger.info("ماژول داشبورد با موفقیت بارگذاری شد")
+            else:
+                logger.error("کلاس DashboardModule در ماژول داشبورد یافت نشد")
+                
+        except Exception as e:
+            logger.error(f"خطا در بارگذاری ماژول داشبورد: {e}")
             self.show_error_screen()
             
     def load_external_modules(self):
@@ -149,13 +179,13 @@ class ResearchAssistantApp:
             
         for module_name in os.listdir(self.modules_dir):
             module_path = os.path.join(self.modules_dir, module_name)
-            if os.path.isdir(module_path) and module_name != "__pycache__":
+            if os.path.isdir(module_path) and module_name != "__pycache__" and module_name != "dashboard":
                 self.load_single_module(module_name, module_path)
                 
     def load_single_module(self, module_name, module_path):
         """بارگذاری یک ماژول از پوشه"""
         try:
-            # جستجوی فایل ماژول (می‌تواند module.py یا {module_name}_module.py باشد)
+            # جستجوی فایل ماژول
             module_file = None
             possible_files = [
                 os.path.join(module_path, "module.py"),
@@ -169,7 +199,7 @@ class ResearchAssistantApp:
                     break
             
             if not module_file:
-                print(f"فایل ماژول برای {module_name} یافت نشد")
+                logger.warning(f"فایل ماژول برای {module_name} یافت نشد")
                 return
                 
             # بارگذاری ماژول
@@ -177,7 +207,7 @@ class ResearchAssistantApp:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             
-            # پیدا کردن کلاس ماژول (می‌تواند Module یا {ModuleName}Module باشد)
+            # پیدا کردن کلاس ماژول
             module_class = None
             possible_classes = [
                 getattr(module, "Module", None),
@@ -191,7 +221,7 @@ class ResearchAssistantApp:
                     break
             
             if not module_class:
-                print(f"کلاس ماژول برای {module_name} یافت نشد")
+                logger.warning(f"کلاس ماژول برای {module_name} یافت نشد")
                 return
                 
             # ثبت ماژول
@@ -204,13 +234,16 @@ class ResearchAssistantApp:
                 command=lambda name=module_name: self.activate_module(name)
             )
             
-            print(f"ماژول {module_name} با موفقیت بارگذاری شد")
+            logger.info(f"ماژول {module_name} با موفقیت بارگذاری شد")
                     
         except Exception as e:
-            print(f"خطا در بارگذاری ماژول {module_name}: {e}")
+            logger.error(f"خطا در بارگذاری ماژول {module_name}: {e}")
             
     def activate_module(self, module_name):
         """فعال کردن یک ماژول"""
+        logger.info(f"تلاش برای فعال‌سازی ماژول: {module_name}")
+        logger.info(f"ماژول‌های موجود: {list(self.modules.keys())}")
+        
         if module_name in self.modules:
             try:
                 self.clear_content()
@@ -225,9 +258,12 @@ class ResearchAssistantApp:
                     self.config
                 )
                 
+                logger.info(f"ماژول {module_name} با موفقیت فعال شد")
                 self.status_var.set(self.config.t("status_ready"))
                 
             except Exception as e:
+                error_details = traceback.format_exc()
+                logger.error(f"خطا در فعال‌سازی ماژول {module_name}: {error_details}")
                 self.status_var.set(self.config.t("module_load_error"))
                 messagebox.showerror(
                     self.config.t("error"), 
@@ -235,6 +271,7 @@ class ResearchAssistantApp:
                 )
                 self.show_error_screen()
         else:
+            logger.warning(f"ماژول {module_name} یافت نشد")
             messagebox.showwarning(
                 self.config.t("warning"), 
                 f"{self.config.t('module_not_found')}: {module_name}"

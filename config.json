@@ -1,9 +1,7 @@
 {
-    "theme": "default",
-    "language": "fa",
-    "recent_files": [
-        "C:/Users/Bit/Downloads/TPS61391.PDF"
-    ],
-    "user_preferences": {},
-    "database_path": "research_db.sqlite"
+  "theme": "default",
+  "language": "fa",
+  "recent_files": [],
+  "user_preferences": {},
+  "database_path": "research_db.sqlite"
 }
