@@ -1,2 +1,4 @@
 # ابتدا فقط necessities
 tkinter
+pandas
+openpyxl

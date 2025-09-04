@@ -1,4 +1,3 @@
-# research_assistant/core/database.py
 import sqlite3
 from pathlib import Path
 import logging
@@ -16,6 +15,41 @@ class Database:
         """ایجاد جداول پایگاه داده در صورت عدم وجود"""
         cursor = self.connection.cursor()
         
+        cursor.execute('''
+                CREATE TABLE IF NOT EXISTS datasheets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    category TEXT,
+                    tags TEXT,
+                    status TEXT DEFAULT 'برنامه‌ریزی شده',
+                    file_path TEXT,
+                    url TEXT,  -- فیلد جدید برای لینک
+                    notes TEXT,
+                    added_date DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            # جدول پروژه‌های تحقیقاتی
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS research_projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_date DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+                # جدول ارتباط پروژه‌ها و مقالات
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS research_project_mapers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER,
+                paper_id INTEGER,
+                added_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES research_projects (id),
+                FOREIGN KEY (paper_id) REFERENCES papers (id),
+                UNIQUE(project_id, paper_id)
+            )
+        ''')
         # جدول مقالات
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS papers (

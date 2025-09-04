@@ -5,11 +5,11 @@ from core.app import ResearchAssistantApp
 def main():
     """نقطه ورود اصلی برنامه"""
     root = tk.Tk()
-    root.tk_setPalette(background='white')
+    root.tk_setPalette(background='white')  # تنظیم پس‌زمینه سفید
     
-    # تنظیمات راست‌چین برای فارسی
+    # تنظیمات راست‌چین برای کل برنامه
     root.option_add('*Font', 'Tahoma 10')
-    root.option_add('*Label.anchor', 'e')
+    root.option_add('*Label.anchor', 'e')  # راست‌چین کردن متن Labelها
     root.option_add('*Button.anchor', 'center')
     
     app = ResearchAssistantApp(root)

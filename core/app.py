@@ -1,4 +1,3 @@
-# research_assistant/core/app.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
@@ -6,6 +5,8 @@ import importlib.util
 import sys
 import logging
 import traceback
+import webbrowser
+import re
 
 # اضافه کردن مسیر اصلی پروژه به sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,7 +29,55 @@ class ResearchAssistantApp:
         self.setup_app()
         self.setup_ui()
         self.load_modules()
+        self.setup_copy_paste()
         
+    def setup_copy_paste(self):
+        """فعال کردن قابلیت کپی و پیست"""
+        # کپی
+        self.root.bind('<Control-c>', self.copy_text)
+        self.root.bind('<Control-C>', self.copy_text)
+        
+        # پیست
+        self.root.bind('<Control-v>', self.paste_text)
+        self.root.bind('<Control-V>', self.paste_text)
+        
+        # کات
+        self.root.bind('<Control-x>', self.cut_text)
+        self.root.bind('<Control-X>', self.cut_text)
+        
+    def copy_text(self, event=None):
+        """کپی کردن متن"""
+        try:
+            widget = self.root.focus_get()
+            if hasattr(widget, 'get') and hasattr(widget, 'selection_get'):
+                selected_text = widget.selection_get()
+                self.root.clipboard_clear()
+                self.root.clipboard_append(selected_text)
+        except:
+            pass  # اگر ویجت از کپی پشتیبانی نمی‌کند، بی‌خواب
+            
+    def paste_text(self, event=None):
+        """چسباندن متن"""
+        try:
+            widget = self.root.focus_get()
+            if hasattr(widget, 'insert'):
+                clipboard_text = self.root.clipboard_get()
+                widget.insert(tk.INSERT, clipboard_text)
+        except:
+            pass  # اگر ویجت از پیست پشتیبانی نمی‌کند، بی‌خواب
+            
+    def cut_text(self, event=None):
+        """بریدن متن"""
+        try:
+            widget = self.root.focus_get()
+            if hasattr(widget, 'get') and hasattr(widget, 'selection_get') and hasattr(widget, 'delete'):
+                selected_text = widget.selection_get()
+                self.root.clipboard_clear()
+                self.root.clipboard_append(selected_text)
+                widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+        except:
+            pass  # اگر ویجت از کات پشتیبانی نمی‌کند، بی‌خواب
+            
     def setup_app(self):
         """تنظیمات اولیه برنامه"""
         self.root.title(self.config.t("app_title"))
@@ -179,7 +228,7 @@ class ResearchAssistantApp:
         # اضافه کردن دکمه‌های ماژول‌ها
         modules_info = [
             ("dashboard", "📊", self.config.t("dashboard")),
-            ("articles", "📄", self.config.t("articles_management")),
+            ("datasheets", "📄", self.config.t("articles_management")),
             ("research", "🔍", self.config.t("research")),
             ("analysis", "📈", self.config.t("analysis")),
             ("search", "🔎", self.config.t("search"))
@@ -372,6 +421,23 @@ class ResearchAssistantApp:
             font=("Tahoma", 12)
         ).pack(pady=10)
         
+    def open_file(self, file_path):
+        """باز کردن فایل با برنامه پیش‌فرض"""
+        try:
+            if os.path.exists(file_path):
+                os.startfile(file_path)  # در ویندوز
+            else:
+                messagebox.showerror("خطا", "فایل یافت نشد: " + file_path)
+        except Exception as e:
+            messagebox.showerror("خطا", f"خطا در باز کردن فایل: {str(e)}")
+            
+    def open_url(self, url):
+        """باز کردن لینک در مرورگر"""
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            messagebox.showerror("خطا", f"خطا در باز کردن لینک: {str(e)}")
+            
     def __del__(self):
         """تمیزکاری هنگام بسته شدن"""
         # بستن اتصال به پایگاه داده
