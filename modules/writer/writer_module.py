@@ -1,7 +1,7 @@
-# modules/research/research_module.py
+# modules/writer/writer_module.py
 import customtkinter as ctk
 
-class ResearchModule(ctk.CTkFrame):
+class WriterModule(ctk.CTkFrame):
     def __init__(self, parent, app, config):
         super().__init__(parent, fg_color="transparent")
         self.app = app
@@ -9,7 +9,7 @@ class ResearchModule(ctk.CTkFrame):
         
         label = ctk.CTkLabel(
             self,
-            text="ماژول تحقیق به زودی اضافه خواهد شد",
+            text="ماژول نوشتن به زودی اضافه خواهد شد",
             font=ctk.CTkFont(size=16)
         )
         label.pack(expand=True)

@@ -1,156 +1,207 @@
-# research_assistant/modules/dashboard/dashboard_module.py
-import tkinter as tk
-from tkinter import ttk
-import logging
-from tkinter import messagebox
+import customtkinter as ctk
+from core.theme_manager import ThemeManager
 
-logger = logging.getLogger(__name__)
-
-class DashboardModule(ttk.Frame):
+class DashboardModule(ctk.CTkFrame):
     def __init__(self, parent, app, config):
-        super().__init__(parent)
+        super().__init__(parent, fg_color="transparent")
         self.app = app
         self.config = config
-        logger.info("سازنده DashboardModule فراخوانی شد")
-        
-        # تنظیم layout برای پر کردن فضای disponible
-        self.pack(fill=tk.BOTH, expand=True)
+        self.theme = ThemeManager()
         
         self.setup_ui()
+        self.load_data()
         
     def setup_ui(self):
         """ایجاد رابط کاربری داشبورد"""
-        logger.info("تنظیم رابط کاربری داشبورد")
+        # فریم اصلی با قابلیت اسکرول
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll_frame.pack(fill="both", expand=True)
         
-        # عنوان اصلی
-        title_label = ttk.Label(
-            self,
-            text="📊 " + self.config.t("dashboard"),
-            font=("Tahoma", 16, "bold")
-        )
-        title_label.pack(pady=20)
+        # کارت‌های آمار
+        self.create_stats_section()
         
-        # فریم برای کارت‌های اطلاعاتی
-        cards_frame = ttk.Frame(self)
-        cards_frame.pack(fill=tk.X, pady=10, padx=20)
+        # نمودارهای اخیر
+        self.create_charts_section()
         
-        # ایجاد کارت‌های اطلاعاتی
-        self.create_info_cards(cards_frame)
+        # فعالیت‌های اخیر
+        self.create_activity_section()
+    
+    def create_stats_section(self):
+        """ایجاد بخش آمار"""
+        stats_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        stats_frame.pack(fill="x", pady=10, padx=20)
         
-        # فریم برای آمار سریع
-        stats_frame = ttk.LabelFrame(
-            self, 
-            text=" " + self.config.t("quick_stats") + " ",
-            padding=10
-        )
-        stats_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=20)
-        
-        # ایجاد آمار سریع
-        self.create_quick_stats(stats_frame)
-        
-        # دکمه بروزرسانی
-        refresh_btn = ttk.Button(
-            self, 
-            text=self.config.t("refresh_stats"), 
-            command=self.refresh_data
-        )
-        refresh_btn.pack(pady=10)
-        
-        logger.info("رابط کاربری داشبورد تنظیم شد")
-        
-    def create_info_cards(self, parent):
-        """ایجاد کارت‌های اطلاعاتی"""
-        # داده‌های کارت‌ها
-        cards_data = [
-            {"title": self.config.t("papers"), "value": "12", "icon": "📄", "color": "#3498db"},
-            {"title": self.config.t("study_time"), "value": "8.5 ساعت", "icon": "⏱️", "color": "#2ecc71"},
-            {"title": self.config.t("notes"), "value": "23", "icon": "📝", "color": "#e74c3c"},
-            {"title": self.config.t("projects"), "value": "3", "icon": "📁", "color": "#f39c12"}
-        ]
-        
-        for i, card in enumerate(cards_data):
-            card_frame = ttk.Frame(
-                parent, 
-                relief=tk.RAISED, 
-                borderwidth=1,
-                padding=10
-            )
-            
-            if i < 2:
-                card_frame.grid(row=0, column=i, padx=5, pady=5, sticky='nsew')
-            else:
-                card_frame.grid(row=1, column=i-2, padx=5, pady=5, sticky='nsew')
-                
-            parent.columnconfigure(i % 2, weight=1)
-            parent.rowconfigure(i // 2, weight=1)
-            
-            # آیکون و عنوان
-            icon_title_frame = ttk.Frame(card_frame)
-            icon_title_frame.pack(fill=tk.X)
-            
-            # آیکون
-            icon_label = ttk.Label(icon_title_frame, text=card["icon"], font=("Tahoma", 16))
-            icon_label.pack(side=tk.RIGHT, padx=(5, 0))
-            
-            # عنوان
-            title_label = ttk.Label(
-                icon_title_frame, 
-                text=card["title"], 
-                font=("Tahoma", 10, "bold"),
-                anchor='e'
-            )
-            title_label.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-            
-            # خط جداکننده
-            separator = ttk.Separator(card_frame, orient=tk.HORIZONTAL)
-            separator.pack(fill=tk.X, pady=5)
-            
-            # مقدار
-            value_label = ttk.Label(
-                card_frame, 
-                text=card["value"], 
-                font=("Tahoma", 18, "bold"),
-                anchor='center'
-            )
-            value_label.pack(fill=tk.BOTH, expand=True)
-        
-    def create_quick_stats(self, parent):
-        """ایجاد بخش آمار سریع"""
-        # آمار نمونه
         stats_data = [
-            (self.config.t("read_papers"), "8"),
-            (self.config.t("reading_papers"), "4"),
-            (self.config.t("planned_papers"), "5"),
-            (self.config.t("avg_study_time"), "45 دقیقه")
+            {"icon": "📄", "title": "مقالات", "value": "157", "color": "primary"},
+            {"icon": "📖", "title": "خوانده شده", "value": "89", "color": "success"},
+            {"icon": "⏳", "title": "در حال مطالعه", "value": "23", "color": "warning"},
+            {"icon": "📌", "title": "برنامه‌ریزی شده", "value": "45", "color": "secondary"}
         ]
         
-        for stat_name, stat_value in stats_data:
-            stat_frame = ttk.Frame(parent)
-            stat_frame.pack(fill=tk.X, pady=5)
-            
-            ttk.Label(
-                stat_frame, 
-                text=stat_name, 
-                width=25,
-                anchor='e'
-            ).pack(side=tk.RIGHT, padx=(10, 0))
-            
-            value_label = ttk.Label(
-                stat_frame, 
-                text=stat_value, 
-                font=("Tahoma", 10, "bold"),
-                anchor='w'
-            )
-            value_label.pack(side=tk.RIGHT)
+        for i, stat in enumerate(stats_data):
+            card = self.create_stat_card(stat)
+            card.grid(row=0, column=i, padx=10, sticky="nsew")
+            stats_frame.grid_columnconfigure(i, weight=1)
     
-    def refresh_data(self):
-        """بروزرسانی داده‌های داشبورد"""
-        # این متد می‌تواند داده‌های واقعی از پایگاه داده بگیرد
-        messagebox.showinfo(
-            self.config.t("info"), 
-            "داده‌های داشبورد بروزرسانی شدند"
+    def create_stat_card(self, data):
+        """ایجاد کارت آمار"""
+        card = ctk.CTkFrame(
+            self.scroll_frame,
+            fg_color=self.theme.get_color("surface"),
+            corner_radius=15,
+            height=120,
+            border_width=1,
+            border_color=self.theme.get_color("border")
         )
+        
+        # آیکون
+        icon_label = ctk.CTkLabel(
+            card,
+            text=data["icon"],
+            font=ctk.CTkFont(size=24),
+            text_color=self.theme.get_color(data["color"])
+        )
+        icon_label.pack(pady=(15, 5))
+        
+        # مقدار
+        value_label = ctk.CTkLabel(
+            card,
+            text=data["value"],
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color=self.theme.get_color("fg")
+        )
+        value_label.pack()
+        
+        # عنوان
+        title_label = ctk.CTkLabel(
+            card,
+            text=data["title"],
+            font=ctk.CTkFont(size=12),
+            text_color=self.theme.get_color("secondary")
+        )
+        title_label.pack(pady=(0, 15))
+        
+        return card
     
-    def on_activate(self):
-        """هنگام فعال شدن ماژول فراخوانی می‌شود"""
-        logger.info("ماژول داشبورد فعال شد")
+    def create_charts_section(self):
+        """ایجاد بخش نمودارها"""
+        charts_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        charts_frame.pack(fill="x", pady=20, padx=20)
+        
+        # عنوان بخش
+        section_title = ctk.CTkLabel(
+            charts_frame,
+            text="📊 آمار و نمودارها",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        section_title.pack(anchor="w", pady=(0, 15))
+        
+        # نمودارها
+        charts_container = ctk.CTkFrame(charts_frame, fg_color="transparent")
+        charts_container.pack(fill="x")
+        
+        # نمودار وضعیت مقالات
+        status_chart_frame = ctk.CTkFrame(
+            charts_container,
+            fg_color=self.theme.get_color("surface"),
+            corner_radius=15,
+            height=200,
+            border_width=1,
+            border_color=self.theme.get_color("border")
+        )
+        status_chart_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        
+        # نمودار توزیع موضوعی
+        topic_chart_frame = ctk.CTkFrame(
+            charts_container,
+            fg_color=self.theme.get_color("surface"),
+            corner_radius=15,
+            height=200,
+            border_width=1,
+            border_color=self.theme.get_color("border")
+        )
+        topic_chart_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
+        
+        # جایگزین برای نمودارها (تا زمانی که نمودارهای واقعی پیاده‌سازی شوند)
+        ctk.CTkLabel(
+            status_chart_frame,
+            text="نمودار وضعیت مقالات",
+            font=ctk.CTkFont(size=14)
+        ).pack(expand=True)
+        
+        ctk.CTkLabel(
+            topic_chart_frame,
+            text="نمودار توزیع موضوعی",
+            font=ctk.CTkFont(size=14)
+        ).pack(expand=True)
+    
+    def create_activity_section(self):
+        """ایجاد بخش فعالیت‌های اخیر"""
+        activity_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        activity_frame.pack(fill="x", pady=20, padx=20)
+        
+        # عنوان بخش
+        section_title = ctk.CTkLabel(
+            activity_frame,
+            text="📋 فعالیت‌های اخیر",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        section_title.pack(anchor="w", pady=(0, 15))
+        
+        # لیست فعالیت‌ها
+        activities = [
+            {"action": "افزودن مقاله", "title": "مقاله جدید در زمینه هوش مصنوعی", "time": "2 ساعت پیش"},
+            {"action": "بروزرسانی", "title": "یادداشت‌های تحقیق", "time": "5 ساعت پیش"},
+            {"action": "مطالعه", "title": "مقاله مروری ML", "time": "1 روز پیش"},
+            {"action": "برنامه‌ریزی", "title": "جلسه مطالعه هفتگی", "time": "2 روز پیش"}
+        ]
+        
+        for activity in activities:
+            self.create_activity_item(activity_frame, activity)
+    
+    def create_activity_item(self, parent, activity):
+        """ایجاد آیتم فعالیت"""
+        item_frame = ctk.CTkFrame(
+            parent,
+            fg_color=self.theme.get_color("surface"),
+            corner_radius=10,
+            height=60,
+            border_width=1,
+            border_color=self.theme.get_color("border")
+        )
+        item_frame.pack(fill="x", pady=5)
+        
+        # محتوای آیتم
+        content_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
+        content_frame.pack(fill="x", padx=15, pady=10)
+        
+        # عمل و عنوان
+        action_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        action_frame.pack(side="left", fill="x", expand=True)
+        
+        ctk.CTkLabel(
+            action_frame,
+            text=activity["action"],
+            font=ctk.CTkFont(weight="bold"),
+            text_color=self.theme.get_color("primary")
+        ).pack(anchor="w")
+        
+        ctk.CTkLabel(
+            action_frame,
+            text=activity["title"],
+            font=ctk.CTkFont(size=12),
+            text_color=self.theme.get_color("fg")
+        ).pack(anchor="w")
+        
+        # زمان
+        ctk.CTkLabel(
+            content_frame,
+            text=activity["time"],
+            font=ctk.CTkFont(size=11),
+            text_color=self.theme.get_color("secondary")
+        ).pack(side="right")
+    
+    def load_data(self):
+        """بارگذاری داده‌های داشبورد"""
+        # این تابع می‌تواند داده‌های واقعی از پایگاه داده بارگذاری کند
+        pass

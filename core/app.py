@@ -1,445 +1,192 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+import customtkinter as ctk
+from .database import Database
+from .config import Config
+from .event_bus import EventBus
+from .theme_manager import ThemeManager
+import importlib
 import os
-import importlib.util
-import sys
-import logging
-import traceback
-import webbrowser
-import re
 
-# اضافه کردن مسیر اصلی پروژه به sys.path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, BASE_DIR)
-
-from core.config import Config
-from core.database import Database
-from core.event_bus import EventBus
-
-# تنظیمات لاگ‌گیری
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-class ResearchAssistantApp:
-    def __init__(self, root):
-        self.root = root
+class ResearchAssistantApp(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent, fg_color="transparent")
+        self.parent = parent
         self.config = Config()
-        self.event_bus = EventBus()
         self.db = Database(self.config)
-        self.setup_app()
+        self.event_bus = EventBus()
+        self.theme = ThemeManager()
+        
+        self.current_module = None
+        self.modules = {}
+        
         self.setup_ui()
         self.load_modules()
-        self.setup_copy_paste()
-        
-    def setup_copy_paste(self):
-        """فعال کردن قابلیت کپی و پیست"""
-        # کپی
-        self.root.bind('<Control-c>', self.copy_text)
-        self.root.bind('<Control-C>', self.copy_text)
-        
-        # پیست
-        self.root.bind('<Control-v>', self.paste_text)
-        self.root.bind('<Control-V>', self.paste_text)
-        
-        # کات
-        self.root.bind('<Control-x>', self.cut_text)
-        self.root.bind('<Control-X>', self.cut_text)
-        
-    def copy_text(self, event=None):
-        """کپی کردن متن"""
-        try:
-            widget = self.root.focus_get()
-            if hasattr(widget, 'get') and hasattr(widget, 'selection_get'):
-                selected_text = widget.selection_get()
-                self.root.clipboard_clear()
-                self.root.clipboard_append(selected_text)
-        except:
-            pass  # اگر ویجت از کپی پشتیبانی نمی‌کند، بی‌خواب
-            
-    def paste_text(self, event=None):
-        """چسباندن متن"""
-        try:
-            widget = self.root.focus_get()
-            if hasattr(widget, 'insert'):
-                clipboard_text = self.root.clipboard_get()
-                widget.insert(tk.INSERT, clipboard_text)
-        except:
-            pass  # اگر ویجت از پیست پشتیبانی نمی‌کند، بی‌خواب
-            
-    def cut_text(self, event=None):
-        """بریدن متن"""
-        try:
-            widget = self.root.focus_get()
-            if hasattr(widget, 'get') and hasattr(widget, 'selection_get') and hasattr(widget, 'delete'):
-                selected_text = widget.selection_get()
-                self.root.clipboard_clear()
-                self.root.clipboard_append(selected_text)
-                widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
-        except:
-            pass  # اگر ویجت از کات پشتیبانی نمی‌کند، بی‌خواب
-            
-    def setup_app(self):
-        """تنظیمات اولیه برنامه"""
-        self.root.title(self.config.t("app_title"))
-        self.root.geometry("1200x800")
-        self.root.minsize(1000, 600)
-        
-        # تنظیم راست به چپ برای فارسی
-        if self.config.current_language == "fa":
-            try:
-                self.root.tk.call('tk', 'scaling', 1.2)
-            except:
-                pass
-            self.root.option_add('*justify', 'right')
-            self.root.option_add('*direction', 'rtl')
-            self.root.option_add('*font', 'Tahoma 10')
-        
-        # مسیرهای مهم
-        self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.data_dir = os.path.join(self.base_dir, "data")
-        self.modules_dir = os.path.join(self.base_dir, "modules")
-        
-        # ایجاد پوشه‌های لازم
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.modules_dir, exist_ok=True)
-        
-        # سیستم ماژول‌ها
-        self.modules = {}
-        self.current_module = "dashboard"
-        self.current_module_instance = None
+        self.setup_event_listeners()
         
     def setup_ui(self):
-        """ایجاد رابط کاربری اصلی با نوار کناری"""
-        # فریم اصلی که شامل نوار کناری و محتوای اصلی است
-        main_container = ttk.Frame(self.root)
-        main_container.pack(fill=tk.BOTH, expand=True)
+        """ایجاد رابط کاربری اصلی"""
+        # Configure grid
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
         
-        # نوار کناری (سمت راست - 20% عرض)
-        self.sidebar = ttk.Frame(main_container, width=200, relief=tk.SUNKEN)
-        self.sidebar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.sidebar.pack_propagate(False)  # جلوگیری از تغییر سایز خودکار
+        # نوار کناری
+        self.sidebar = self.create_sidebar()
+        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
         
-        # بخش محتوای اصلی (سمت چپ - 80% عرض)
-        self.main_content = ttk.Frame(main_container)
-        self.main_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        # ایجاد منوی کناری
-        self.create_sidebar()
-        
-        # ایجاد منوی اصلی
-        self.setup_main_menu()
-        
-        # ناحیه محتوای ماژول‌ها
-        self.content_frame = ttk.Frame(self.main_content)
-        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # منطقه محتوا
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.content_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+        self.content_frame.grid_rowconfigure(0, weight=1)
+        self.content_frame.grid_columnconfigure(0, weight=1)
         
         # نوار وضعیت
-        self.setup_status_bar()
-        
+        self.status_bar = self.create_status_bar()
+        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 10))
+    
     def create_sidebar(self):
-        """ایجاد نوار کناری با دکمه‌های ماژول‌ها"""
-        # عنوان نوار کناری
-        title_label = ttk.Label(
-            self.sidebar,
-            text="🧪 " + self.config.t("modules"),
-            font=("Tahoma", 12, "bold")
+        """ایجاد نوار کناری"""
+        sidebar = ctk.CTkFrame(self, width=250, corner_radius=15)
+        
+        # هدر نوار کناری
+        header = ctk.CTkLabel(
+            sidebar,
+            text="📚 دستیار تحقیقاتی",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            height=60
         )
-        title_label.pack(pady=20)
+        header.pack(pady=(20, 10), padx=20, fill="x")
         
-        # جداکننده
-        separator = ttk.Separator(self.sidebar, orient=tk.HORIZONTAL)
-        separator.pack(fill=tk.X, padx=10, pady=10)
-        
-        # فریم برای دکمه‌های ماژول‌ها
-        self.buttons_frame = ttk.Frame(self.sidebar)
-        self.buttons_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-    def setup_main_menu(self):
-        """ایجاد منوی اصلی"""
-        menu_bar = tk.Menu(self.root)
-        self.root.config(menu=menu_bar)
-        
-        # منوی فایل
-        file_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label=self.config.t("file"), menu=file_menu)
-        file_menu.add_command(label=self.config.t("settings"), command=self.show_settings)
-        
-        # انتخاب زبان
-        lang_menu = tk.Menu(file_menu, tearoff=0)
-        file_menu.add_cascade(label="زبان / Language", menu=lang_menu)
-        lang_menu.add_command(label="فارسی", command=lambda: self.change_language("fa"))
-        lang_menu.add_command(label="English", command=lambda: self.change_language("en"))
-        
-        file_menu.add_separator()
-        file_menu.add_command(label=self.config.t("exit"), command=self.root.quit)
-        
-        # منوی کمک
-        help_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label=self.config.t("help"), menu=help_menu)
-        help_menu.add_command(label=self.config.t("about"), command=self.show_about)
-        
-    def setup_status_bar(self):
-        """ایجاد نوار وضعیت"""
-        self.status_frame = ttk.Frame(self.root)
-        self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        
-        self.status_var = tk.StringVar(value=self.config.t("status_ready"))
-        status_label = ttk.Label(self.status_frame, textvariable=self.status_var)
-        status_label.pack(side=tk.LEFT, padx=5)
-        
-        # نمایش زبان جاری
-        lang_text = "فارسی" if self.config.current_language == "fa" else "English"
-        ttk.Label(self.status_frame, text=f"🌐 {lang_text}").pack(side=tk.RIGHT, padx=5)
-        
-    def clear_content(self):
-        """پاک کردن محتوای فعلی"""
-        for widget in self.content_frame.winfo_children():
-            widget.destroy()
-            
-        if self.current_module_instance:
-            try:
-                self.current_module_instance.destroy()
-            except:
-                pass
-            self.current_module_instance = None
-        
-    def load_modules(self):
-        """بارگذاری ماژول‌ها"""
-        logger.info("بارگذاری ماژول‌ها شروع شد")
-        
-        # ماژول‌های داخلی
-        self.register_builtin_modules()
-        
-        # ماژول‌های خارجی (از پوشه modules)
-        self.load_external_modules()
-        
-        # اضافه کردن دکمه‌های ماژول‌ها به نوار کناری
-        self.add_module_buttons_to_sidebar()
-        
-        # نمایش داشبورد به عنوان صفحه اصلی
-        self.activate_module("dashboard")
-        
-    def add_module_buttons_to_sidebar(self):
-        """اضافه کردن دکمه‌های ماژول‌ها به نوار کناری"""
-        # پاک کردن دکمه‌های قبلی
-        for widget in self.buttons_frame.winfo_children():
-            widget.destroy()
-        
-        # اضافه کردن دکمه‌های ماژول‌ها
-        modules_info = [
-            ("dashboard", "📊", self.config.t("dashboard")),
-            ("datasheets", "📄", self.config.t("articles_management")),
-            ("research", "🔍", self.config.t("research")),
-            ("analysis", "📈", self.config.t("analysis")),
-            ("search", "🔎", self.config.t("search"))
+        # دکمه‌های ماژول‌ها
+        modules = [
+            ("🏠", "داشبورد", "dashboard"),
+            ("📄", "مقالات", "papers"),
+            ("📅", "برنامه‌ریزی", "planner"),
+            ("📝", "یادداشت‌ها", "notes"),
+            ("🔍", "تحقیق", "research"),
+            ("✏️", "نوشتن", "writer"),
+            ("⚙️", "تنظیمات", "settings")
         ]
         
-        for module_name, icon, text in modules_info:
-            if module_name in self.modules:
-                # ایجاد دکمه با آیکون و متن
-                btn = ttk.Button(
-                    self.buttons_frame,
-                    text=f"{icon} {text}",
-                    command=lambda m=module_name: self.activate_module(m),
-                    width=20
-                )
-                btn.pack(pady=5, padx=10, fill=tk.X)
+        for icon, text, module_name in modules:
+            btn = ctk.CTkButton(
+                sidebar,
+                text=f"{icon} {text}",
+                font=ctk.CTkFont(size=14),
+                height=45,
+                corner_radius=10,
+                anchor="w",
+                fg_color="transparent",
+                hover_color=self.theme.get_color("surface"),
+                border_width=0,
+                command=lambda mn=module_name: self.switch_module(mn)
+            )
+            btn.pack(pady=5, padx=15, fill="x")
         
-    def register_builtin_modules(self):
-        """ثبت ماژول‌های داخلی"""
-        try:
-            # مسیر ماژول داشبورد
-            dashboard_path = os.path.join(self.modules_dir, "dashboard", "dashboard_module.py")
-            
-            if not os.path.exists(dashboard_path):
-                logger.error(f"فایل ماژول داشبورد یافت نشد: {dashboard_path}")
-                return
-                
-            # بارگذاری ماژول با importlib
-            spec = importlib.util.spec_from_file_location("dashboard_module", dashboard_path)
-            dashboard_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(dashboard_module)
-            
-            # پیدا کردن کلاس DashboardModule
-            if hasattr(dashboard_module, 'DashboardModule'):
-                self.modules["dashboard"] = dashboard_module.DashboardModule
-                logger.info("ماژول داشبورد با موفقیت بارگذاری شد")
-            else:
-                logger.error("کلاس DashboardModule در ماژول داشبورد یافت نشد")
-                
-        except Exception as e:
-            logger.error(f"خطا در بارگذاری ماژول داشبورد: {e}")
-            self.show_error_screen()
-            
-    def load_external_modules(self):
-        """بارگذاری خودکار ماژول‌ها از پوشه modules"""
-        if not os.path.exists(self.modules_dir):
-            return
-            
-        for module_name in os.listdir(self.modules_dir):
-            module_path = os.path.join(self.modules_dir, module_name)
-            if os.path.isdir(module_path) and module_name != "__pycache__" and module_name != "dashboard":
-                self.load_single_module(module_name, module_path)
-                
-    def load_single_module(self, module_name, module_path):
-        """بارگذاری یک ماژول از پوشه"""
-        try:
-            # جستجوی فایل ماژول
-            module_file = None
-            possible_files = [
-                os.path.join(module_path, "module.py"),
-                os.path.join(module_path, f"{module_name}_module.py"),
-                os.path.join(module_path, f"{module_name}.py")
-            ]
-            
-            for file_path in possible_files:
-                if os.path.exists(file_path):
-                    module_file = file_path
-                    break
-            
-            if not module_file:
-                logger.warning(f"فایل ماژول برای {module_name} یافت نشد")
-                return
-                
-            # بارگذاری ماژول
-            spec = importlib.util.spec_from_file_location(module_name, module_file)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            
-            # پیدا کردن کلاس ماژول
-            module_class = None
-            possible_classes = [
-                getattr(module, "Module", None),
-                getattr(module, f"{module_name.capitalize()}Module", None),
-                getattr(module, module_name.capitalize(), None)
-            ]
-            
-            for class_obj in possible_classes:
-                if class_obj and hasattr(class_obj, '__call__'):
-                    module_class = class_obj
-                    break
-            
-            if not module_class:
-                logger.warning(f"کلاس ماژول برای {module_name} یافت نشد")
-                return
-                
-            # ثبت ماژول
-            self.modules[module_name] = module_class
-            logger.info(f"ماژول {module_name} با موفقیت بارگذاری شد")
-                    
-        except Exception as e:
-            logger.error(f"خطا در بارگذاری ماژول {module_name}: {e}")
-            
-    def activate_module(self, module_name):
-        """فعال کردن یک ماژول"""
-        logger.info(f"تلاش برای فعال‌سازی ماژول: {module_name}")
+        # سوئیچ تم
+        theme_frame = ctk.CTkFrame(sidebar, fg_color="transparent")
+        theme_frame.pack(side="bottom", pady=20, padx=15, fill="x")
+        
+        ctk.CTkLabel(theme_frame, text="تم:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        
+        theme_var = ctk.StringVar(value=ctk.get_appearance_mode())
+        theme_switch = ctk.CTkSegmentedButton(
+            theme_frame,
+            values=["Light", "Dark", "System"],
+            variable=theme_var,
+            command=self.change_theme
+        )
+        theme_switch.pack(fill="x", pady=(5, 0))
+        
+        return sidebar
+    
+    def change_theme(self, theme_mode):
+        """تغییر تم برنامه"""
+        ctk.set_appearance_mode(theme_mode)
+        self.event_bus.publish("theme_changed", {"theme": theme_mode})
+    
+    def create_status_bar(self):
+        """ایجاد نوار وضعیت"""
+        status_bar = ctk.CTkFrame(self, height=30, corner_radius=10)
+        
+        # وضعیت اتصال
+        status_label = ctk.CTkLabel(
+            status_bar,
+            text="✅ آماده",
+            font=ctk.CTkFont(size=12)
+        )
+        status_label.pack(side="left", padx=10)
+        
+        # اطلاعات پایگاه داده
+        db_info = ctk.CTkLabel(
+            status_bar,
+            text="پایگاه داده: فعال",
+            font=ctk.CTkFont(size=12)
+        )
+        db_info.pack(side="right", padx=10)
+        
+        return status_bar
+    
+    def load_modules(self):
+        """بارگذاری ماژول‌ها"""
+        module_paths = {
+            "dashboard": "modules.dashboard.dashboard_module",
+            "papers": "modules.papers.papers_module",
+            "planner": "modules.planner.planner_module",
+            "notes": "modules.notes.notes_module",
+            "research": "modules.research.research_module",
+            "writer": "modules.writer.writer_module"
+        }
+        
+        for name, path in module_paths.items():
+            try:
+                module = importlib.import_module(path)
+                module_class = getattr(module, f"{name.capitalize()}Module")
+                self.modules[name] = module_class(self.content_frame, self, self.config)
+            except Exception as e:
+                print(f"خطا در بارگذاری ماژول {name}: {e}")
+                # ایجاد ماژول جایگزین در صورت خطا
+                self.modules[name] = self.create_fallback_module(name)
+        
+        # فعال کردن ماژول پیش‌فرض
+        self.switch_module("dashboard")
+    
+    def create_fallback_module(self, name):
+        """ایجاد ماژول جایگزین در صورت خطا"""
+        fallback = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        
+        label_text = f"ماژول {name} در حال توسعه است"
+        if name == "notes":
+            label_text = "ماژول یادداشت‌ها به زودی اضافه خواهد شد"
+        
+        label = ctk.CTkLabel(
+            fallback,
+            text=label_text,
+            font=ctk.CTkFont(size=16)
+        )
+        label.pack(expand=True)
+        
+        return fallback
+    
+    def switch_module(self, module_name):
+        """تعویض ماژول فعال"""
+        if self.current_module:
+            self.current_module.pack_forget()
         
         if module_name in self.modules:
-            try:
-                self.clear_content()
-                self.status_var.set(f"{self.config.t('loading_module')} {module_name}...")
-                self.root.update()
-                
-                # ایجاد نمونه ماژول
-                self.current_module = module_name
-                self.current_module_instance = self.modules[module_name](
-                    self.content_frame, 
-                    self,
-                    self.config
-                )
-                
-                # نمایش فریم ماژول
-                self.current_module_instance.pack(fill=tk.BOTH, expand=True)
-                
-                # اگر ماژول متد on_activate دارد، آن را فراخوانی کن
-                if hasattr(self.current_module_instance, 'on_activate'):
-                    self.current_module_instance.on_activate()
-                
-                logger.info(f"ماژول {module_name} با موفقیت فعال شد")
-                self.status_var.set(self.config.t("status_ready"))
-                
-            except Exception as e:
-                error_details = traceback.format_exc()
-                logger.error(f"خطا در فعال‌سازی ماژول {module_name}: {error_details}")
-                self.status_var.set(self.config.t("module_load_error"))
-                messagebox.showerror(
-                    self.config.t("error"), 
-                    f"{self.config.t('module_load_error')} {module_name}:\n{str(e)}"
-                )
-                self.show_error_screen()
-        else:
-            logger.warning(f"ماژول {module_name} یافت نشد")
-            messagebox.showwarning(
-                self.config.t("warning"), 
-                f"{self.config.t('module_not_found')}: {module_name}"
-            )
+            self.current_module = self.modules[module_name]
+            self.current_module.pack(fill="both", expand=True)
             
-    def change_language(self, language):
-        """تغییر زبان برنامه"""
-        if language in ["fa", "en"]:
-            if self.config.set_language(language):
-                messagebox.showinfo(
-                    self.config.t("info"), 
-                    self.config.t("restart_required")
-                )
-            
-    def show_settings(self):
-        """نمایش تنظیمات"""
-        messagebox.showinfo(
-            self.config.t("settings"), 
-            self.config.t("settings_under_development")
-        )
-        
-    def show_about(self):
-        """نمایش اطلاعات درباره برنامه"""
-        about_text = f"""
-        {self.config.t("app_title")}
-        {self.config.t("version")} 0.1
-        
-        {self.config.t("about_description")}
-        
-        {self.config.t("developed_with")} Python & Tkinter
-        """
-        messagebox.showinfo(self.config.t("about"), about_text)
-        
-    def show_error_screen(self):
-        """نمایش صفحه خطا"""
-        self.clear_content()
-        
-        error_frame = ttk.Frame(self.content_frame)
-        error_frame.pack(fill=tk.BOTH, expand=True, padx=50, pady=50)
-        
-        ttk.Label(
-            error_frame, 
-            text="❌ " + self.config.t("module_load_error"),
-            font=("Tahoma", 16, "bold")
-        ).pack(pady=20)
-        
-        ttk.Label(
-            error_frame, 
-            text=self.config.t("check_module_installation"),
-            font=("Tahoma", 12)
-        ).pack(pady=10)
-        
-    def open_file(self, file_path):
-        """باز کردن فایل با برنامه پیش‌فرض"""
-        try:
-            if os.path.exists(file_path):
-                os.startfile(file_path)  # در ویندوز
-            else:
-                messagebox.showerror("خطا", "فایل یافت نشد: " + file_path)
-        except Exception as e:
-            messagebox.showerror("خطا", f"خطا در باز کردن فایل: {str(e)}")
-            
-    def open_url(self, url):
-        """باز کردن لینک در مرورگر"""
-        try:
-            webbrowser.open(url)
-        except Exception as e:
-            messagebox.showerror("خطا", f"خطا در باز کردن لینک: {str(e)}")
-            
-    def __del__(self):
-        """تمیزکاری هنگام بسته شدن"""
-        # بستن اتصال به پایگاه داده
-        if hasattr(self, 'db'):
-            self.db.close()
+            # ارسال رویداد تغییر ماژول
+            self.event_bus.publish("module_changed", {"module": module_name})
+    
+    def setup_event_listeners(self):
+        """تنظیم شنوندگان رویداد"""
+        self.event_bus.subscribe("theme_changed", self.on_theme_changed)
+        self.event_bus.subscribe("module_changed", self.on_module_changed)
+    
+    def on_theme_changed(self, data):
+        """واکنش به تغییر تم"""
+        print(f"تم تغییر کرد به: {data['theme']}")
+    
+    def on_module_changed(self, data):
+        """واکنش به تغییر ماژول"""
+        print(f"ماژول تغییر کرد به: {data['module']}")

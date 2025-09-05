@@ -1,4 +1,53 @@
-# ابتدا فقط necessities
-tkinter
-pandas
-openpyxl
+# Research Assistant - Minimal Requirements
+# Lightweight version for faster installation
+
+# Core GUI Framework
+customtkinter==5.2.0
+darkdetect==0.8.0
+
+# Image Processing
+Pillow==10.4.0
+
+# HTTP Requests and API Integration
+requests==2.31.0
+httpx==0.25.0
+aiohttp==3.9.1
+
+# PDF Processing
+PyMuPDF==1.23.8
+PyPDF2==3.0.1
+
+# Academic Search and Research
+scholarly==1.7.2
+arxiv==1.4.3
+crossrefapi==1.7.0
+bibtexparser==1.4.0
+
+# Data Analysis and Visualization
+pandas==2.0.3
+numpy==1.24.3
+matplotlib==3.7.2
+
+# Natural Language Processing
+nltk==3.8.1
+spacy==3.7.2
+gensim==4.3.2
+textblob==0.17.1
+
+# AI and Machine Learning
+openai==0.28.0
+transformers==4.34.1
+torch==2.1.0
+torchvision==0.16.0
+sentence-transformers==2.2.2
+
+# Utilities and Helpers
+tqdm==4.66.1
+pyyaml==6.0.1
+python-dotenv==1.0.0
+loguru==0.7.0
+
+# Optional: Persian Text Processing
+hazm==0.9.1
+arabic-reshaper==3.0.0
+python-bidi==0.4.2

@@ -1,7 +1,37 @@
 {
-    "theme": "default",
-    "language": "fa",
-    "recent_files": [],
-    "user_preferences": {},
-    "database_path": "research_db.sqlite"
+    "app": {
+        "name": "Research Assistant",
+        "version": "1.0.0",
+        "language": "fa",
+        "default_module": "dashboard"
+    },
+    "database": {
+        "path": "data/research_assistant.db",
+        "backup_enabled": true,
+        "backup_path": "backups/"
+    },
+    "theme": {
+        "default_mode": "system",
+        "default_color_theme": "blue",
+        "animation_enabled": true,
+        "font_family": "Vazirmatn",
+        "font_size": 14
+    },
+    "modules": {
+        "dashboard": {"enabled": true},
+        "papers": {"enabled": true},
+        "planner": {"enabled": true},
+        "notes": {"enabled": true},
+        "research": {"enabled": true},
+        "writer": {"enabled": true}
+    },
+    "ai_services": {
+        "deepseek": {
+            "enabled": false,
+            "api_key": ""
+        },
+        "google_scholar": {
+            "enabled": true
+        }
+    }
 }
