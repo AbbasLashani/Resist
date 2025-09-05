@@ -16,6 +16,10 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.event_bus = EventBus()
         self.theme = ThemeManager()
         
+        # تنظیمات پیش‌فرض
+        self.font_size = self.config.get("font_size", 14)
+        self.theme_mode = self.config.get("theme_mode", "System")
+        
         self.current_module = None
         self.modules = {}
         
@@ -23,21 +27,25 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.load_modules()
         self.setup_event_listeners()
         
+        # اعمال تم اولیه
+        self.apply_theme_settings()
+        
     def setup_ui(self):
         """ایجاد رابط کاربری اصلی با پشتیبانی RTL"""
         # Configure grid
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-        
-        # نوار کناری (در سمت راست)
-        self.sidebar = self.create_sidebar()
-        self.sidebar.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+        self.grid_columnconfigure(0, weight=4)  # محتوا 4 واحد فضای بیشتر بگیرد
+        self.grid_columnconfigure(1, weight=1)  # سایدبار 1 واحد فضا بگیرد
         
         # منطقه محتوا (در سمت چپ)
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
         self.content_frame.grid_rowconfigure(0, weight=1)
         self.content_frame.grid_columnconfigure(0, weight=1)
+        
+        # نوار کناری (در سمت راست)
+        self.sidebar = self.create_sidebar()
+        self.sidebar.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
         
         # نوار وضعیت
         self.status_bar = self.create_status_bar()
@@ -46,7 +54,8 @@ class ResearchAssistantApp(ctk.CTkFrame):
     def create_sidebar(self):
         """ایجاد نوار کناری با پشتیبانی RTL"""
         sidebar = ctk.CTkFrame(self, width=250, corner_radius=15)
-        
+        sidebar.pack_propagate(False)  # جلوگیری از تغییر اندازه توسط فرزندان
+
         # هدر نوار کناری با متن فارسی
         header_text = reshape_text("📚 دستیار تحقیقاتی")
         header = ctk.CTkLabel(
@@ -69,21 +78,26 @@ class ResearchAssistantApp(ctk.CTkFrame):
             ("⚙️", "تنظیمات", "settings")
         ]
         
+        # فریم برای دکمه‌های منو با اسکرول اگر نیاز باشد
+        menu_frame = ctk.CTkFrame(sidebar, fg_color="transparent")
+        menu_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
         for icon, text, module_name in modules:
             btn_text = reshape_text(f"{icon} {text}")
             btn = ctk.CTkButton(
-                sidebar,
+                menu_frame,
                 text=btn_text,
-                font=ctk.CTkFont(size=14),
+                font=ctk.CTkFont(size=self.font_size),
                 height=45,
                 corner_radius=10,
                 anchor="e",  # تراز به راست
-                fg_color="transparent",
-                hover_color=self.theme.get_color("surface"),
+                fg_color=("#F0F0F0", "#2B2B2B"),  # رنگ پس‌زمینه متفاوت برای حالت عادی
+                hover_color=("#E0E0E0", "#3C3C3C"),  # رنگ متفاوت برای حالت هاور
+                text_color=("#000000", "#FFFFFF"),  # رنگ متن برای تم روشن و تاریک
                 border_width=0,
                 command=lambda mn=module_name: self.switch_module(mn)
             )
-            btn.pack(pady=5, padx=15, fill="x")
+            btn.pack(pady=5, fill="x")
             set_widget_rtl(btn)
         
         # سوئیچ تم با متن فارسی
@@ -94,12 +108,12 @@ class ResearchAssistantApp(ctk.CTkFrame):
         theme_label = ctk.CTkLabel(
             theme_frame, 
             text=theme_label_text, 
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=self.font_size)
         )
         theme_label.pack(anchor="e")
         set_widget_rtl(theme_label)
         
-        theme_var = ctk.StringVar(value=ctk.get_appearance_mode())
+        theme_var = ctk.StringVar(value=self.theme_mode)
         theme_switch = ctk.CTkSegmentedButton(
             theme_frame,
             values=["Light", "Dark", "System"],
@@ -112,8 +126,19 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def change_theme(self, theme_mode):
         """تغییر تم برنامه"""
+        self.theme_mode = theme_mode
+        self.config.set("theme_mode", theme_mode)
         ctk.set_appearance_mode(theme_mode)
         self.event_bus.publish("theme_changed", {"theme": theme_mode})
+        
+        # اعمال مجدد تنظیمات تم
+        self.apply_theme_settings()
+    
+    def apply_theme_settings(self):
+        """اعمال تنظیمات تم روی تمام ویجت‌ها"""
+        # این متد می‌تواند برای به روزرسانی رنگ‌ها پس از تغییر تم استفاده شود
+        # در اینجا می‌توانید رنگ‌های خاص تم را روی ویجت‌ها اعمال کنید
+        pass
     
     def create_status_bar(self):
         """ایجاد نوار وضعیت با پشتیبانی RTL"""
@@ -124,7 +149,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         status_label = ctk.CTkLabel(
             status_bar,
             text=status_text,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=self.font_size)
         )
         status_label.pack(side="right", padx=10)
         set_widget_rtl(status_label)
@@ -134,7 +159,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         db_info = ctk.CTkLabel(
             status_bar,
             text=db_text,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=self.font_size)
         )
         db_info.pack(side="left", padx=10)
         set_widget_rtl(db_info)
@@ -149,7 +174,8 @@ class ResearchAssistantApp(ctk.CTkFrame):
             "planner": "modules.planner.planner_module",
             "notes": "modules.notes.notes_module",
             "research": "modules.research.research_module",
-            "writer": "modules.writer.writer_module"
+            "writer": "modules.writer.writer_module",
+            "settings": "modules.settings.settings_module"
         }
         
         for name, path in module_paths.items():
@@ -201,6 +227,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         """تنظیم شنوندگان رویداد"""
         self.event_bus.subscribe("theme_changed", self.on_theme_changed)
         self.event_bus.subscribe("module_changed", self.on_module_changed)
+        self.event_bus.subscribe("font_size_changed", self.on_font_size_changed)
     
     def on_theme_changed(self, data):
         """واکنش به تغییر تم"""
@@ -209,3 +236,13 @@ class ResearchAssistantApp(ctk.CTkFrame):
     def on_module_changed(self, data):
         """واکنش به تغییر ماژول"""
         print(f"ماژول تغییر کرد به: {data['module']}")
+    
+    def on_font_size_changed(self, data):
+        """واکنش به تغییر اندازه فونت"""
+        self.font_size = data["size"]
+        self.config.set("font_size", self.font_size)
+        print(f"اندازه فونت تغییر کرد به: {self.font_size}")
+        
+        # بازسازی رابط کاربری با اندازه فونت جدید
+        self.setup_ui()
+        self.load_modules()

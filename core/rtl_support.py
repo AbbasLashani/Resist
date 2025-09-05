@@ -1,19 +1,22 @@
 import arabic_reshaper
 from bidi.algorithm import get_display
 
-# تنظیمات arabic_reshaper
-arabic_reshaper.config_for_arabic_reshaper(
-    language='farsi',
-    use_unshaped_instead_of_isolated=False,
-    delete_harakat=True,
-    support_ligatures=True,
-    digits='arabic'
-)
+# پیکربندی جدید برای arabic-reshaper
+reshaper_config = {
+    'language': 'Arabic',
+    'use_unshaped_instead_of_isolated': False,
+    'delete_harakat': False,
+    'support_ligatures': True,
+    'digits': 'arabic'
+}
+
+# ایجاد نمونه reshaper با پیکربندی
+reshaper = arabic_reshaper.ArabicReshaper(configuration=reshaper_config)
 
 def reshape_text(text):
     """تغییر شکل حروف فارسی و راست‌چین کردن متن"""
     try:
-        reshaped_text = arabic_reshaper.reshape(text)
+        reshaped_text = reshaper.reshape(text)
         return get_display(reshaped_text)
     except:
         return text
