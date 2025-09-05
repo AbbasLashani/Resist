@@ -3,6 +3,7 @@ from .database import Database
 from .config import Config
 from .event_bus import EventBus
 from .theme_manager import ThemeManager
+from .rtl_support import reshape_text, set_widget_rtl
 import importlib
 import os
 
@@ -23,18 +24,18 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.setup_event_listeners()
         
     def setup_ui(self):
-        """ایجاد رابط کاربری اصلی"""
+        """ایجاد رابط کاربری اصلی با پشتیبانی RTL"""
         # Configure grid
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         
-        # نوار کناری
+        # نوار کناری (در سمت راست)
         self.sidebar = self.create_sidebar()
-        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
+        self.sidebar.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
         
-        # منطقه محتوا
+        # منطقه محتوا (در سمت چپ)
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.content_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+        self.content_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
         self.content_frame.grid_rowconfigure(0, weight=1)
         self.content_frame.grid_columnconfigure(0, weight=1)
         
@@ -43,19 +44,21 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.status_bar.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 10))
     
     def create_sidebar(self):
-        """ایجاد نوار کناری"""
+        """ایجاد نوار کناری با پشتیبانی RTL"""
         sidebar = ctk.CTkFrame(self, width=250, corner_radius=15)
         
-        # هدر نوار کناری
+        # هدر نوار کناری با متن فارسی
+        header_text = reshape_text("📚 دستیار تحقیقاتی")
         header = ctk.CTkLabel(
             sidebar,
-            text="📚 دستیار تحقیقاتی",
+            text=header_text,
             font=ctk.CTkFont(size=20, weight="bold"),
             height=60
         )
         header.pack(pady=(20, 10), padx=20, fill="x")
+        set_widget_rtl(header)
         
-        # دکمه‌های ماژول‌ها
+        # دکمه‌های ماژول‌ها با متن فارسی
         modules = [
             ("🏠", "داشبورد", "dashboard"),
             ("📄", "مقالات", "papers"),
@@ -67,25 +70,34 @@ class ResearchAssistantApp(ctk.CTkFrame):
         ]
         
         for icon, text, module_name in modules:
+            btn_text = reshape_text(f"{icon} {text}")
             btn = ctk.CTkButton(
                 sidebar,
-                text=f"{icon} {text}",
+                text=btn_text,
                 font=ctk.CTkFont(size=14),
                 height=45,
                 corner_radius=10,
-                anchor="w",
+                anchor="e",  # تراز به راست
                 fg_color="transparent",
                 hover_color=self.theme.get_color("surface"),
                 border_width=0,
                 command=lambda mn=module_name: self.switch_module(mn)
             )
             btn.pack(pady=5, padx=15, fill="x")
+            set_widget_rtl(btn)
         
-        # سوئیچ تم
+        # سوئیچ تم با متن فارسی
         theme_frame = ctk.CTkFrame(sidebar, fg_color="transparent")
         theme_frame.pack(side="bottom", pady=20, padx=15, fill="x")
         
-        ctk.CTkLabel(theme_frame, text="تم:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        theme_label_text = reshape_text("تم:")
+        theme_label = ctk.CTkLabel(
+            theme_frame, 
+            text=theme_label_text, 
+            font=ctk.CTkFont(size=12)
+        )
+        theme_label.pack(anchor="e")
+        set_widget_rtl(theme_label)
         
         theme_var = ctk.StringVar(value=ctk.get_appearance_mode())
         theme_switch = ctk.CTkSegmentedButton(
@@ -104,24 +116,28 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.event_bus.publish("theme_changed", {"theme": theme_mode})
     
     def create_status_bar(self):
-        """ایجاد نوار وضعیت"""
+        """ایجاد نوار وضعیت با پشتیبانی RTL"""
         status_bar = ctk.CTkFrame(self, height=30, corner_radius=10)
         
-        # وضعیت اتصال
+        # وضعیت اتصال با متن فارسی
+        status_text = reshape_text("✅ آماده")
         status_label = ctk.CTkLabel(
             status_bar,
-            text="✅ آماده",
+            text=status_text,
             font=ctk.CTkFont(size=12)
         )
-        status_label.pack(side="left", padx=10)
+        status_label.pack(side="right", padx=10)
+        set_widget_rtl(status_label)
         
-        # اطلاعات پایگاه داده
+        # اطلاعات پایگاه داده با متن فارسی
+        db_text = reshape_text("پایگاه داده: فعال")
         db_info = ctk.CTkLabel(
             status_bar,
-            text="پایگاه داده: فعال",
+            text=db_text,
             font=ctk.CTkFont(size=12)
         )
-        db_info.pack(side="right", padx=10)
+        db_info.pack(side="left", padx=10)
+        set_widget_rtl(db_info)
         
         return status_bar
     
@@ -151,6 +167,8 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def create_fallback_module(self, name):
         """ایجاد ماژول جایگزین در صورت خطا"""
+        from .rtl_support import reshape_text
+        
         fallback = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         
         label_text = f"ماژول {name} در حال توسعه است"
@@ -159,10 +177,11 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
         label = ctk.CTkLabel(
             fallback,
-            text=label_text,
+            text=reshape_text(label_text),
             font=ctk.CTkFont(size=16)
         )
         label.pack(expand=True)
+        set_widget_rtl(label)
         
         return fallback
     

@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from core.theme_manager import ThemeManager
+from core.rtl_support import reshape_text, set_widget_rtl
 
 class DashboardModule(ctk.CTkFrame):
     def __init__(self, parent, app, config):
@@ -12,7 +13,7 @@ class DashboardModule(ctk.CTkFrame):
         self.load_data()
         
     def setup_ui(self):
-        """ایجاد رابط کاربری داشبورد"""
+        """ایجاد رابط کاربری داشبورد با پشتیبانی RTL"""
         # فریم اصلی با قابلیت اسکرول
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_frame.pack(fill="both", expand=True)
@@ -45,6 +46,8 @@ class DashboardModule(ctk.CTkFrame):
     
     def create_stat_card(self, data):
         """ایجاد کارت آمار"""
+        from core.rtl_support import reshape_text, set_widget_rtl
+        
         card = ctk.CTkFrame(
             self.scroll_frame,
             fg_color=self.theme.get_color("surface"),
@@ -73,28 +76,34 @@ class DashboardModule(ctk.CTkFrame):
         value_label.pack()
         
         # عنوان
+        title_text = reshape_text(data["title"])
         title_label = ctk.CTkLabel(
             card,
-            text=data["title"],
+            text=title_text,
             font=ctk.CTkFont(size=12),
             text_color=self.theme.get_color("secondary")
         )
         title_label.pack(pady=(0, 15))
+        set_widget_rtl(title_label)
         
         return card
     
     def create_charts_section(self):
         """ایجاد بخش نمودارها"""
+        from core.rtl_support import reshape_text, set_widget_rtl
+        
         charts_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         charts_frame.pack(fill="x", pady=20, padx=20)
         
         # عنوان بخش
+        section_title_text = reshape_text("📊 آمار و نمودارها")
         section_title = ctk.CTkLabel(
             charts_frame,
-            text="📊 آمار و نمودارها",
+            text=section_title_text,
             font=ctk.CTkFont(size=18, weight="bold")
         )
         section_title.pack(anchor="w", pady=(0, 15))
+        set_widget_rtl(section_title)
         
         # نمودارها
         charts_container = ctk.CTkFrame(charts_frame, fg_color="transparent")
@@ -123,30 +132,40 @@ class DashboardModule(ctk.CTkFrame):
         topic_chart_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
         
         # جایگزین برای نمودارها (تا زمانی که نمودارهای واقعی پیاده‌سازی شوند)
-        ctk.CTkLabel(
+        status_chart_text = reshape_text("نمودار وضعیت مقالات")
+        status_chart_label = ctk.CTkLabel(
             status_chart_frame,
-            text="نمودار وضعیت مقالات",
+            text=status_chart_text,
             font=ctk.CTkFont(size=14)
-        ).pack(expand=True)
+        )
+        status_chart_label.pack(expand=True)
+        set_widget_rtl(status_chart_label)
         
-        ctk.CTkLabel(
+        topic_chart_text = reshape_text("نمودار توزیع موضوعی")
+        topic_chart_label = ctk.CTkLabel(
             topic_chart_frame,
-            text="نمودار توزیع موضوعی",
+            text=topic_chart_text,
             font=ctk.CTkFont(size=14)
-        ).pack(expand=True)
+        )
+        topic_chart_label.pack(expand=True)
+        set_widget_rtl(topic_chart_label)
     
     def create_activity_section(self):
         """ایجاد بخش فعالیت‌های اخیر"""
+        from core.rtl_support import reshape_text, set_widget_rtl
+        
         activity_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         activity_frame.pack(fill="x", pady=20, padx=20)
         
         # عنوان بخش
+        section_title_text = reshape_text("📋 فعالیت‌های اخیر")
         section_title = ctk.CTkLabel(
             activity_frame,
-            text="📋 فعالیت‌های اخیر",
+            text=section_title_text,
             font=ctk.CTkFont(size=18, weight="bold")
         )
         section_title.pack(anchor="w", pady=(0, 15))
+        set_widget_rtl(section_title)
         
         # لیست فعالیت‌ها
         activities = [
@@ -161,6 +180,8 @@ class DashboardModule(ctk.CTkFrame):
     
     def create_activity_item(self, parent, activity):
         """ایجاد آیتم فعالیت"""
+        from core.rtl_support import reshape_text, set_widget_rtl
+        
         item_frame = ctk.CTkFrame(
             parent,
             fg_color=self.theme.get_color("surface"),
@@ -177,29 +198,38 @@ class DashboardModule(ctk.CTkFrame):
         
         # عمل و عنوان
         action_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-        action_frame.pack(side="left", fill="x", expand=True)
+        action_frame.pack(side="right", fill="x", expand=True)  # تغییر به سمت راست
         
-        ctk.CTkLabel(
+        action_text = reshape_text(activity["action"])
+        action_label = ctk.CTkLabel(
             action_frame,
-            text=activity["action"],
+            text=action_text,
             font=ctk.CTkFont(weight="bold"),
             text_color=self.theme.get_color("primary")
-        ).pack(anchor="w")
+        )
+        action_label.pack(anchor="e")  # تراز به راست
+        set_widget_rtl(action_label)
         
-        ctk.CTkLabel(
+        title_text = reshape_text(activity["title"])
+        title_label = ctk.CTkLabel(
             action_frame,
-            text=activity["title"],
+            text=title_text,
             font=ctk.CTkFont(size=12),
             text_color=self.theme.get_color("fg")
-        ).pack(anchor="w")
+        )
+        title_label.pack(anchor="e")  # تراز به راست
+        set_widget_rtl(title_label)
         
         # زمان
-        ctk.CTkLabel(
+        time_text = reshape_text(activity["time"])
+        time_label = ctk.CTkLabel(
             content_frame,
-            text=activity["time"],
+            text=time_text,
             font=ctk.CTkFont(size=11),
             text_color=self.theme.get_color("secondary")
-        ).pack(side="right")
+        )
+        time_label.pack(side="left")  # تغییر به سمت چپ
+        set_widget_rtl(time_label)
     
     def load_data(self):
         """بارگذاری داده‌های داشبورد"""
