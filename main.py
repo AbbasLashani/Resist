@@ -34,7 +34,7 @@ class MainApp(ctk.CTk):
         super().__init__()
         
         # تنظیمات اولیه برنامه
-        self.title(reshape_arabic_text("Research Assistant - دستیار تحقیقاتی"))
+        self.title(reshape_arabic_text("Research Assistant "))
         self.geometry("1400x800")
         self.minsize(1200, 700)
         
@@ -52,17 +52,28 @@ class MainApp(ctk.CTk):
         # مرکز پنجره
         self.center_window()
         
+        # ذخیره تنظیمات هنگام بسته شدن برنامه
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
     def setup_persian_font(self):
         """تنظیم فونت فارسی"""
         try:
-            # بارگذاری فونت فارسی
-            font_path = "assets/fonts/Vazirmatn-Regular.ttf"
+            # مسیر فونت را نسبت به فایل اصلی برنامه می‌سازیم
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            font_path = os.path.join(base_dir, "assets", "fonts", "Vazirmatn-Regular.ttf")
+            
             if os.path.exists(font_path):
+                # اضافه کردن فونت به مدیریت فونت‌های customtkinter
                 ctk.FontManager.load_font(font_path)
+                
                 # تنظیم فونت پیش‌فرض برای تمام ویجت‌ها
-                ctk.CTkFont.default_family = "Vazirmatn"
+                # این بخش را حذف می‌کنیم چون باعث خطا می‌شود
+                # تنظیمات فونت در خود ویجت‌ها انجام می‌شود
+                
+                print("فونت فارسی با موفقیت بارگذاری شد.")
             else:
                 print("فونت فارسی یافت نشد، از فونت پیش‌فرض استفاده می‌شود")
+                print("مسیر جستجو شده:", font_path)
         except Exception as e:
             print(f"خطا در تنظیمات فونت: {e}")
     
@@ -74,6 +85,20 @@ class MainApp(ctk.CTk):
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
+    
+    def on_closing(self):
+        """ذخیره تنظیمات هنگام بستن برنامه"""
+        try:
+            # ذخیره تنظیمات فعلی
+            if hasattr(self, 'app') and hasattr(self.app, 'config'):
+                self.app.config.set("theme_mode", self.app.theme_mode)
+                self.app.config.set("font_size", self.app.font_size)
+                self.app.config.set("sidebar_width", self.app.sidebar_width)
+                print("تنظیمات ذخیره شدند.")
+        except Exception as e:
+            print(f"خطا در ذخیره تنظیمات: {e}")
+        finally:
+            self.quit()
 
 def run_app():
     """اجرای برنامه در thread اصلی"""

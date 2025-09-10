@@ -1,7 +1,7 @@
 import arabic_reshaper
 from bidi.algorithm import get_display
 
-# پیکربندی جدید برای arabic-reshaper
+# Create configuration for Arabic reshaper
 reshaper_config = {
     'language': 'Arabic',
     'use_unshaped_instead_of_isolated': False,
@@ -10,7 +10,7 @@ reshaper_config = {
     'digits': 'arabic'
 }
 
-# ایجاد نمونه reshaper با پیکربندی
+# Initialize the reshaper with configuration
 reshaper = arabic_reshaper.ArabicReshaper(configuration=reshaper_config)
 
 def reshape_text(text):
@@ -24,8 +24,15 @@ def reshape_text(text):
 def set_widget_rtl(widget):
     """تنظیم جهت راست به چپ برای ویجت"""
     try:
-        # برای ویجت‌های CTk می‌توانیم از anchor استفاده کنیم
         if hasattr(widget, 'configure'):
-            widget.configure(anchor='e')  # تراز به راست
+            widget.configure(anchor='e')
+    except:
+        pass
+
+def set_widget_ltr(widget):
+    """تنظیم جهت چپ به راست برای ویجت"""
+    try:
+        if hasattr(widget, 'configure'):
+            widget.configure(anchor='w')
     except:
         pass

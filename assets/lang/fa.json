@@ -1,0 +1,23 @@
+{
+    "app_title": "دستیار تحقیقاتی",
+    "status_ready": "آماده",
+    "db_status": "پایگاه داده: فعال",
+    "dashboard": "داشبورد",
+    "papers": "مقالات",
+    "planner": "برنامه‌ریزی",
+    "notes": "یادداشت‌ها",
+    "research": "تحقیق",
+    "writer": "نوشتن",
+    "settings": "تنظیمات",
+    "settings_title": "تنظیمات برنامه",
+    "theme": "تم",
+    "font_size": "اندازه فونت",
+    "sidebar_width": "عرض سایدبار",
+    "language": "زبان",
+    "save_changes": "ذخیره تغییرات",
+    "changes_saved": "تنظیمات ذخیره شد",
+    "module_development": "ماژول {} در حال توسعه است",
+    "notes_development": "ماژول یادداشت‌ها به زودی اضافه خواهد شد",
+    "persian": "فارسی",
+    "english": "انگلیسی"
+}

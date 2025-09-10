@@ -1,0 +1,23 @@
+{
+    "app_title": "Research Assistant",
+    "status_ready": "Ready",
+    "db_status": "Database: Active",
+    "dashboard": "Dashboard",
+    "papers": "Papers",
+    "planner": "Planner",
+    "notes": "Notes",
+    "research": "Research",
+    "writer": "Writer",
+    "settings": "Settings",
+    "settings_title": "Application Settings",
+    "theme": "Theme",
+    "font_size": "Font Size",
+    "sidebar_width": "Sidebar Width",
+    "language": "Language",
+    "save_changes": "Save Changes",
+    "changes_saved": "Settings saved successfully",
+    "module_development": "{} module is under development",
+    "notes_development": "Notes module will be added soon",
+    "persian": "Persian",
+    "english": "English"
+}
