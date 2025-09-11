@@ -25,7 +25,10 @@ def set_widget_rtl(widget):
     """تنظیم جهت راست به چپ برای ویجت"""
     try:
         if hasattr(widget, 'configure'):
-            widget.configure(anchor='e')
+            widget.configure(anchor='e')  # تراز به راست
+            # برای برخی ویجت‌ها ویژگی justify نیز وجود دارد
+            if hasattr(widget, 'justify'):
+                widget.configure(justify='right')
     except:
         pass
 
@@ -33,6 +36,9 @@ def set_widget_ltr(widget):
     """تنظیم جهت چپ به راست برای ویجت"""
     try:
         if hasattr(widget, 'configure'):
-            widget.configure(anchor='w')
+            widget.configure(anchor='w')  # تراز به چپ
+            # برای برخی ویجت‌ها ویژگی justify نیز وجود دارد
+            if hasattr(widget, 'justify'):
+                widget.configure(justify='left')
     except:
         pass

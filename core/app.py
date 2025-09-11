@@ -27,11 +27,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.modules = {}
         self.current_module_name = "dashboard"
         
-        # ایجاد فریم‌های اصلی
-        self.main_container = ctk.CTkFrame(self, fg_color="transparent")
-        self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.setup_ui()
+        self.setup_ui()  # این خط باید بعد از مقداردهی تمام متغیرها باشد
         self.load_modules()
         self.setup_event_listeners()
         
@@ -40,11 +36,19 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
     def setup_ui(self):
         """ایجاد رابط کاربری اصلی با پشتیبانی RTL/LTR"""
-        # پاک کردن ویجت‌های موجود در main_container
-        for widget in self.main_container.winfo_children():
+        # پاک کردن ویجت‌های موجود
+        for widget in self.winfo_children():
             widget.destroy()
         
-        # Configure grid برای main_container
+        # Configure grid
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
+        # ایجاد فریم اصلی برای محتوا و سایدبار
+        self.main_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # تنظیم grid برای فریم اصلی
         self.main_container.grid_rowconfigure(0, weight=1)
         
         if self.language.is_rtl():
@@ -56,13 +60,11 @@ class ResearchAssistantApp(ctk.CTkFrame):
             self.main_container.grid_columnconfigure(0, weight=0)  # سایدبار
             self.main_container.grid_columnconfigure(1, weight=1)  # محتوا
         
-        # ایجاد نوار کناری
-        self.sidebar = self.create_sidebar()
-        
         # ایجاد ناحیه محتوا
         self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.content_frame.grid_rowconfigure(0, weight=1)
-        self.content_frame.grid_columnconfigure(0, weight=1)
+        
+        # ایجاد نوار کناری
+        self.sidebar = self.create_sidebar()
         
         # چیدمان بر اساس زبان
         if self.language.is_rtl():

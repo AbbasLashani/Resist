@@ -34,7 +34,7 @@ class MainApp(ctk.CTk):
         super().__init__()
         
         # تنظیمات اولیه برنامه
-        self.title(reshape_arabic_text("Research Assistant "))
+        self.title(reshape_arabic_text("Research Assistant - دستیار تحقیقاتی"))
         self.geometry("1400x800")
         self.minsize(1200, 700)
         
@@ -65,11 +65,6 @@ class MainApp(ctk.CTk):
             if os.path.exists(font_path):
                 # اضافه کردن فونت به مدیریت فونت‌های customtkinter
                 ctk.FontManager.load_font(font_path)
-                
-                # تنظیم فونت پیش‌فرض برای تمام ویجت‌ها
-                # این بخش را حذف می‌کنیم چون باعث خطا می‌شود
-                # تنظیمات فونت در خود ویجت‌ها انجام می‌شود
-                
                 print("فونت فارسی با موفقیت بارگذاری شد.")
             else:
                 print("فونت فارسی یافت نشد، از فونت پیش‌فرض استفاده می‌شود")
@@ -94,6 +89,7 @@ class MainApp(ctk.CTk):
                 self.app.config.set("theme_mode", self.app.theme_mode)
                 self.app.config.set("font_size", self.app.font_size)
                 self.app.config.set("sidebar_width", self.app.sidebar_width)
+                self.app.config.set("language", self.app.language.get_current_language())
                 print("تنظیمات ذخیره شدند.")
         except Exception as e:
             print(f"خطا در ذخیره تنظیمات: {e}")

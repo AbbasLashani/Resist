@@ -1,57 +1,41 @@
-import customtkinter as ctk
-import json
-import os
-
 class ThemeManager:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._init_self()
-        return cls._instance
-    
-    def _init_self(self):
-        """مقداردهی اولیه تم‌ها"""
+    def __init__(self):
         self.themes = {
             "light": {
-                "bg": "#FFFFFF",
-                "fg": "#000000",
-                "primary": "#1976D2",
-                "secondary": "#424242",
-                "accent": "#FF4081",
-                "surface": "#F5F5F5",
-                "error": "#F44336",
-                "warning": "#FFC107",
-                "success": "#4CAF50",
-                "on_primary": "#FFFFFF",
-                "on_secondary": "#FFFFFF",
-                "on_surface": "#000000",
-                "border": "#E0E0E0"
+                "primary": "#3B8ED0",
+                "secondary": "#6c757d",
+                "success": "#28a745",
+                "danger": "#dc3545",
+                "warning": "#ffc107",
+                "info": "#17a2b8",
+                "background": "#f8f9fa",
+                "surface": "#ffffff",
+                "text": "#212529"
             },
             "dark": {
-                "bg": "#121212",
-                "fg": "#FFFFFF",
-                "primary": "#2196F3",
-                "secondary": "#BDBDBD",
-                "accent": "#FF4081",
-                "surface": "#1E1E1E",
-                "error": "#F44336",
-                "warning": "#FFC107",
-                "success": "#4CAF50",
-                "on_primary": "#000000",
-                "on_secondary": "#000000",
-                "on_surface": "#FFFFFF",
-                "border": "#424242"
+                "primary": "#3B8ED0",
+                "secondary": "#6c757d",
+                "success": "#28a745",
+                "danger": "#dc3545",
+                "warning": "#ffc107",
+                "info": "#17a2b8",
+                "background": "#121212",
+                "surface": "#1e1e1e",
+                "text": "#e0e0e0"
             }
         }
+    
+    def get_color(self, color_name, theme_mode=None):
+        """دریافت رنگ بر اساس تم"""
+        if theme_mode is None:
+            theme_mode = "light"
         
-        self.current_theme = "light"
+        theme = self.themes.get(theme_mode.lower(), self.themes["light"])
+        return theme.get(color_name, "#000000")
     
-    def get_color(self, color_name):
-        """دریافت رنگ بر اساس تم فعال"""
-        return self.themes[self.current_theme].get(color_name, "#000000")
-    
-    def get_current_theme(self):
-        """دریافت تم فعلی"""
-        return self.current_theme
+    def get_theme(self, theme_mode=None):
+        """دریافت تم کامل"""
+        if theme_mode is None:
+            theme_mode = "light"
+        
+        return self.themes.get(theme_mode.lower(), self.themes["light"])
