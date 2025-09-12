@@ -1,6 +1,6 @@
-"""
 modules/notes/notes_module.py
 
+"""
 NotesModule — طراحی بازطراحی شده برای بخش یادداشت‌ها
 - نماییده شده از سایدبار به بعد (پوشش کامل فضای محتوا)
 - ظاهری مدرن با استفاده از customtkinter
@@ -27,14 +27,14 @@ except Exception:
         return x
     def set_widget_rtl(w):
         try:
-            if hasattr(w, "config"):
-                w.config(justify="right")
+            if hasattr(w, "configure"):
+                w.configure(justify="right")
         except Exception:
             pass
     def set_widget_ltr(w):
         try:
-            if hasattr(w, "config"):
-                w.config(justify="left")
+            if hasattr(w, "configure"):
+                w.configure(justify="left")
         except Exception:
             pass
 
@@ -61,8 +61,9 @@ class NotesModule(ctk.CTkFrame):
         # UI vars
         self.search_var = ctk.StringVar()
         self.title_var = ctk.StringVar()
+        self.autosave_var = ctk.BooleanVar(value=self.autosave)
 
-        # ensure table and build
+        # Ensure table and build
         self._ensure_table()
         self._build_ui()
         self.load_notes()
@@ -94,99 +95,78 @@ class NotesModule(ctk.CTkFrame):
         for w in self.winfo_children():
             w.destroy()
 
-        # layout: fixed-width sidebar-like list on left, editor on right
+        # Layout: fixed-width sidebar-like list on left, editor on right
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=0)
         self.grid_columnconfigure(1, weight=1)
 
-        list_width = 260
         list_col = 0 if not self.is_rtl() else 1
         editor_col = 1 if not self.is_rtl() else 0
 
-        # LEFT: notes list panel
-        self.list_panel = ctk.CTkFrame(self, width=list_width, corner_radius=8)
-        self.list_panel.grid(row=0, column=list_col, sticky="nsw" if not self.is_rtl() else "nse", padx=(8,4) if not self.is_rtl() else (4,8), pady=8)
-        self.list_panel.grid_propagate(False)
+        # LEFT: Notes list panel
+        self.list_panel = ctk.CTkFrame(self, corner_radius=8)
+        self.list_panel.grid(row=0, column=list_col, sticky="nswe", padx=(8, 4) if not self.is_rtl() else (4, 8), pady=8)
         self.list_panel.grid_rowconfigure(2, weight=1)
+        self.list_panel.grid_columnconfigure(0, weight=1)
 
-        # header (title + actions)
+        # Header (title)
         header = ctk.CTkFrame(self.list_panel, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="we", padx=8, pady=(8,6))
+        header.grid(row=0, column=0, sticky="we", padx=8, pady=(8, 6))
         header.grid_columnconfigure(0, weight=1)
-
+        
         title_lbl = ctk.CTkLabel(header, text=self._t('notes'), font=ctk.CTkFont(size=self.font_size+2, weight="bold"))
         title_lbl.grid(row=0, column=0, sticky="w")
 
-        # search
+        # Search
         search_entry = ctk.CTkEntry(self.list_panel, textvariable=self.search_var, placeholder_text=self._t('search'))
-        search_entry.grid(row=1, column=0, sticky="we", padx=8, pady=(0,8))
+        search_entry.grid(row=1, column=0, sticky="we", padx=8, pady=(0, 8))
         self.search_var.trace_add('write', lambda *_: self._refresh_notes_list())
 
-        # scrollable list of note cards
-        try:
-            scroll_frame = ctk.CTkScrollableFrame(self.list_panel)
-            scroll_frame.grid(row=2, column=0, sticky="nswe", padx=8, pady=(0,8))
-            self.cards_container = scroll_frame
-        except Exception:
-            # fallback to canvas + frame
-            container = tk.Frame(self.list_panel)
-            container.grid(row=2, column=0, sticky="nswe", padx=8, pady=(0,8))
-            container.grid_rowconfigure(0, weight=1)
-            container.grid_columnconfigure(0, weight=1)
-            canvas = tk.Canvas(container)
-            canvas.grid(row=0, column=0, sticky="nswe")
-            vsb = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-            vsb.grid(row=0, column=1, sticky='ns')
-            canvas.configure(yscrollcommand=vsb.set)
-            inner = tk.Frame(canvas)
-            canvas.create_window((0,0), window=inner, anchor='nw')
-            inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-            self.cards_container = inner
-
-        # bottom action buttons
+        # Scrollable list of note cards
+        self.cards_container = ctk.CTkScrollableFrame(self.list_panel, fg_color="transparent")
+        self.cards_container.grid(row=2, column=0, sticky="nswe", padx=8, pady=(0, 8))
+        self.cards_container.grid_columnconfigure(0, weight=1)
+        
+        # Bottom action buttons
         actions = ctk.CTkFrame(self.list_panel, fg_color="transparent")
-        actions.grid(row=3, column=0, sticky="we", padx=8, pady=(0,8))
+        actions.grid(row=3, column=0, sticky="we", padx=8, pady=(0, 8))
+        actions.grid_columnconfigure((0, 1, 2), weight=1)
 
-        btn_new = ctk.CTkButton(actions, text=self._t('new_note'), command=self.new_note, width=1)
-        btn_new.pack(side="left", expand=True, fill="x", padx=(0,6))
-        btn_export = ctk.CTkButton(actions, text=self._t('export'), command=self.export_note, width=1)
-        btn_export.pack(side="left", expand=True, fill="x", padx=(0,6))
+        btn_new = ctk.CTkButton(actions, text=self._t('new_note'), command=self.new_note)
+        btn_new.grid(row=0, column=0, sticky="we", padx=(0, 6))
+        
+        btn_export = ctk.CTkButton(actions, text=self._t('export'), command=self.export_note)
+        btn_export.grid(row=0, column=1, sticky="we", padx=(0, 6))
+        
         btn_delete = ctk.CTkButton(actions, text=self._t('delete_note'), command=self.delete_note, fg_color="#ff6b6b", hover_color="#ff5252")
-        btn_delete.pack(side="left", expand=True, fill="x")
+        btn_delete.grid(row=0, column=2, sticky="we")
 
         # RIGHT: editor panel
         self.editor_panel = ctk.CTkFrame(self, corner_radius=8)
-        self.editor_panel.grid(row=0, column=editor_col, sticky="nswe", padx=(4,8) if not self.is_rtl() else (8,4), pady=8)
-        self.editor_panel.grid_rowconfigure(3, weight=1)
+        self.editor_panel.grid(row=0, column=editor_col, sticky="nswe", padx=(4, 8) if not self.is_rtl() else (8, 4), pady=8)
+        self.editor_panel.grid_rowconfigure(2, weight=1)
         self.editor_panel.grid_columnconfigure(0, weight=1)
-
+        
         top_bar = ctk.CTkFrame(self.editor_panel, fg_color="transparent")
-        top_bar.grid(row=0, column=0, sticky="we", padx=8, pady=(8,4))
-        top_bar.grid_columnconfigure(1, weight=1)
+        top_bar.grid(row=0, column=0, sticky="we", padx=8, pady=(8, 4))
+        top_bar.grid_columnconfigure(0, weight=1)
 
-        self.title_entry = ctk.CTkEntry(top_bar, textvariable=self.title_var)
-        self.title_entry.grid(row=0, column=0, sticky="we", padx=(0,8))
+        self.title_entry = ctk.CTkEntry(top_bar, textvariable=self.title_var, placeholder_text=self._t('title'))
+        self.title_entry.grid(row=0, column=0, sticky="we", padx=(0, 8))
 
         btn_save = ctk.CTkButton(top_bar, text=self._t('save'), command=self.save_note, width=80)
         btn_save.grid(row=0, column=1, sticky="e")
 
-        body_lbl = ctk.CTkLabel(self.editor_panel, text=self._t('body'), font=ctk.CTkFont(size=self.font_size))
-        body_lbl.grid(row=1, column=0, sticky="w", padx=8, pady=(6,2))
-
-        try:
-            self.body_text = ctk.CTkTextbox(self.editor_panel, width=10, height=20)
-        except Exception:
-            self.body_text = tk.Text(self.editor_panel, wrap='word')
-        self.body_text.grid(row=3, column=0, sticky="nswe", padx=8, pady=(0,8))
-
+        self.body_text = ctk.CTkTextbox(self.editor_panel, width=10, height=20, wrap="word", font=ctk.CTkFont(size=self.font_size))
+        self.body_text.grid(row=1, column=0, sticky="nswe", padx=8, pady=(8, 8))
+        
         # status / autosave toggle
         bottom_bar = ctk.CTkFrame(self.editor_panel, fg_color="transparent")
-        bottom_bar.grid(row=4, column=0, sticky="we", padx=8, pady=(0,8))
-        self.autosave_var = tk.BooleanVar(value=self.autosave)
+        bottom_bar.grid(row=2, column=0, sticky="we", padx=8, pady=(0, 8))
         autosave_cb = ctk.CTkCheckBox(bottom_bar, text=self._t('autosave'), variable=self.autosave_var, command=self._toggle_autosave)
-        autosave_cb.pack(side="left")
-
-        # initial styling for RTL
+        autosave_cb.grid(row=0, column=0, sticky="w")
+        
+        # Initial styling for RTL
         if self.is_rtl():
             set_widget_rtl(self.title_entry)
             set_widget_rtl(self.body_text)
@@ -230,28 +210,32 @@ class NotesModule(ctk.CTkFrame):
         # clear existing cards
         for child in list(self.cards_container.winfo_children()):
             child.destroy()
+        
         q = self.search_var.get().strip().lower()
         self.filtered_ids = []
+        row = 0
         for note in self.notes:
             title = note.get('title') or self._t('untitled')
             if not q or q in title.lower() or (q in (note.get('body') or '').lower()):
-                self._add_note_card(note)
+                self._add_note_card(note, row)
                 self.filtered_ids.append(note['id'])
-
-    def _add_note_card(self, note: Dict):
-        # compact card with title and snippet
-        frame = ctk.CTkFrame(self.cards_container, fg_color="transparent")
-        frame.pack(fill='x', pady=6, padx=6)
+                row += 1
+    
+    def _add_note_card(self, note: Dict, row: int):
+        # Compact card with title and snippet
+        frame = ctk.CTkFrame(self.cards_container, corner_radius=6, fg_color=self.cget('fg_color'))
+        frame.grid(row=row, column=0, sticky="we", pady=3)
+        frame.grid_columnconfigure(0, weight=1)
         frame.bind('<Button-1>', lambda e, nid=note['id']: self.show_note_by_id(nid))
 
         t = note.get('title') or self._t('untitled')
         lbl = ctk.CTkLabel(frame, text=t, anchor='w', font=ctk.CTkFont(size=self.font_size, weight="bold"))
-        lbl.pack(fill='x')
+        lbl.grid(row=0, column=0, sticky="w", padx=8, pady=2)
         lbl.bind('<Button-1>', lambda e, nid=note['id']: self.show_note_by_id(nid))
 
-        snippet = (note.get('body') or '').split('\n', 1)[0][:120]
+        snippet = (note.get('body') or '').split('\n', 1)[0][:120].strip()
         sub = ctk.CTkLabel(frame, text=snippet, anchor='w', font=ctk.CTkFont(size=max(self.font_size-2,10)))
-        sub.pack(fill='x')
+        sub.grid(row=1, column=0, sticky="w", padx=8, pady=2)
         sub.bind('<Button-1>', lambda e, nid=note['id']: self.show_note_by_id(nid))
 
     # ---- actions ----
@@ -261,13 +245,10 @@ class NotesModule(ctk.CTkFrame):
             return
         self.current_note_id = note_id
         self.title_var.set(note.get('title', ''))
+        
         try:
-            if isinstance(self.body_text, tk.Text):
-                self.body_text.delete('1.0', tk.END)
-                self.body_text.insert('1.0', note.get('body',''))
-            else:
-                self.body_text.delete('0.0', 'end')
-                self.body_text.insert('0.0', note.get('body',''))
+            self.body_text.delete('0.0', 'end')
+            self.body_text.insert('0.0', note.get('body',''))
         except Exception:
             pass
 
@@ -275,10 +256,7 @@ class NotesModule(ctk.CTkFrame):
         self.current_note_id = None
         self.title_var.set('')
         try:
-            if isinstance(self.body_text, tk.Text):
-                self.body_text.delete('1.0', tk.END)
-            else:
-                self.body_text.delete('0.0', 'end')
+            self.body_text.delete('0.0', 'end')
         except Exception:
             pass
         self.title_entry.focus_set()
@@ -286,10 +264,15 @@ class NotesModule(ctk.CTkFrame):
     def save_note(self):
         title = self.title_var.get().strip()
         try:
-            body = self.body_text.get('1.0', tk.END) if isinstance(self.body_text, tk.Text) else self.body_text.get('0.0', 'end')
-            body = body.rstrip('\n')
+            body = self.body_text.get('0.0', 'end').rstrip('\n')
         except Exception:
             body = ''
+            
+        if not title and not body:
+            if self.current_note_id:
+                self.delete_note()
+            return
+            
         now = datetime.utcnow().isoformat(sep=' ', timespec='seconds')
         try:
             if self.db and hasattr(self.db, 'connection'):
@@ -317,12 +300,8 @@ class NotesModule(ctk.CTkFrame):
             print(f"NotesModule: save_note error: {e}")
             messagebox.showerror(self._t('error'), self._t('save_failed'))
             return
+        
         self.load_notes()
-        try:
-            idx = self.filtered_ids.index(self.current_note_id)
-            # no direct selection on cards; bring into view by reloading and showing
-        except Exception:
-            pass
         try:
             if self.event_bus:
                 self.event_bus.publish('notes_changed', {'id': self.current_note_id})
@@ -376,7 +355,10 @@ class NotesModule(ctk.CTkFrame):
             messagebox.showerror(self._t('error'), self._t('export_failed'))
 
     def _toggle_autosave(self):
-        self.autosave = bool(self.autosave_var.get())
+        self.autosave = self.autosave_var.get()
+        if not self.autosave:
+            # show a warning or change status if needed
+            pass
 
     # ---- events ----
     def _register_events(self):

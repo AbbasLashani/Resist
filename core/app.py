@@ -198,9 +198,18 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
         for name, path in module_paths.items():
             try:
-                module = importlib.import_module(path)
-                module_class = getattr(module, f"{name.capitalize()}Module")
-                self.modules[name] = module_class(self.content_frame, self, self.config)
+                # برای ماژول‌های research و writer از import مستقیم استفاده می‌کنیم
+                if name == "research":
+                    from modules.research.research_module import ResearchModule
+                    self.modules[name] = ResearchModule(self.content_frame, self, self.config)
+                elif name == "writer":
+                    from modules.writer.writer_module import WriterModule
+                    self.modules[name] = WriterModule(self.content_frame, self, self.config)
+                else:
+                    # برای ماژول‌های دیگر از روش معمول استفاده می‌کنیم
+                    module = importlib.import_module(path)
+                    module_class = getattr(module, f"{name.capitalize()}Module")
+                    self.modules[name] = module_class(self.content_frame, self, self.config)
             except Exception as e:
                 print(f"Error loading module {name}: {e}")
                 self.modules[name] = self.create_fallback_module(name)
