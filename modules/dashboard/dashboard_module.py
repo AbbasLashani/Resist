@@ -34,17 +34,17 @@ class DashboardModule(BaseModule):
         
         # آمار در ۴ ستون
         stats = [
-            {"title": "مقالات", "count": "۱۲", "icon": "📄", "color": "#2196F3"},
-            {"title": "یادداشت‌ها", "count": "۸", "icon": "📝", "color": "#4CAF50"},
-            {"title": "وظایف", "count": "۵", "icon": "📅", "color": "#FF9800"},
-            {"title": "پروژه‌ها", "count": "۳", "icon": "🔍", "color": "#9C27B0"}
+            {"title": "مقالات", "count": "۱۲", "icon": "📄", "color": "#2196F3", "light_color": "#E3F2FD"},
+            {"title": "یادداشت‌ها", "count": "۸", "icon": "📝", "color": "#4CAF50", "light_color": "#E8F5E9"},
+            {"title": "وظایف", "count": "۵", "icon": "📅", "color": "#FF9800", "light_color": "#FFF3E0"},
+            {"title": "پروژه‌ها", "count": "۳", "icon": "🔍", "color": "#9C27B0", "light_color": "#F3E5F5"}
         ]
         
         for i, stat in enumerate(stats):
             stat_frame = ctk.CTkFrame(
                 stats_frame, 
                 corner_radius=12,
-                fg_color=stat["color"] + "20",  # alpha 20%
+                fg_color=stat["light_color"],  # استفاده از رنگ روشن به جای alpha
                 border_color=stat["color"],
                 border_width=1
             )
@@ -127,32 +127,37 @@ class DashboardModule(BaseModule):
     
     def create_activity_chart(self, parent):
         """ایجاد نمودار فعالیت‌های اخیر"""
-        # داده‌های نمونه برای نمودار
-        days = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
-        activities = [5, 7, 3, 8, 6, 4, 9]
-        
-        if not self.language.is_rtl():
-            days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
-        
-        # ایجاد نمودار
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.bar(days, activities, color=['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#607D8B', '#795548'])
-        ax.set_ylabel('تعداد فعالیت' if self.language.is_rtl() else 'Activity Count')
-        ax.set_title('فعالیت‌های هفتگی' if self.language.is_rtl() else 'Weekly Activities')
-        
-        # تنظیمات نمودار برای RTL
-        if self.language.is_rtl():
-            ax.set_ylabel('تعداد فعالیت', fontname='B Nazanin')
-            ax.set_title('فعالیت‌های هفتگی', fontname='B Nazanin')
-            for label in ax.get_xticklabels():
-                label.set_fontname('B Nazanin')
-            for label in ax.get_yticklabels():
-                label.set_fontname('B Nazanin')
-        
-        # قرار دادن نمودار در Tkinter
-        canvas = FigureCanvasTkAgg(fig, parent)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="x", padx=20, pady=10)
+        try:
+            # داده‌های نمونه برای نمودار
+            days = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
+            activities = [5, 7, 3, 8, 6, 4, 9]
+            
+            if not self.language.is_rtl():
+                days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+            
+            # ایجاد نمودار
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.bar(days, activities, color=['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#607D8B', '#795548'])
+            ax.set_ylabel('تعداد فعالیت' if self.language.is_rtl() else 'Activity Count')
+            ax.set_title('فعالیت‌های هفتگی' if self.language.is_rtl() else 'Weekly Activities')
+            
+            # تنظیمات نمودار برای RTL
+            if self.language.is_rtl():
+                ax.set_ylabel('تعداد فعالیت')
+                ax.set_title('فعالیت‌های هفتگی')
+            
+            # قرار دادن نمودار در Tkinter
+            canvas = FigureCanvasTkAgg(fig, parent)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="x", padx=20, pady=10)
+        except Exception as e:
+            print(f"خطا در ایجاد نمودار: {e}")
+            error_label = ctk.CTkLabel(
+                parent,
+                text="خطا در نمایش نمودار" if self.language.is_rtl() else "Chart display error",
+                font=ctk.CTkFont(size=14)
+            )
+            error_label.pack(pady=20)
     
     def create_notification_item(self, parent, notif):
         """ایجاد آیتم اعلان"""

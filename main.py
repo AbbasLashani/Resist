@@ -3,10 +3,14 @@ import sys
 import os
 import arabic_reshaper
 from bidi.algorithm import get_display
+import json
 
 # اضافه کردن مسیر ماژول‌ها به sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__)))
-
+#sys.path.append(os.path.join(os.path.dirname(__file__)))
+# اضافه کردن مسیر ماژول‌ها به sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+sys.path.append(os.path.join(current_dir, "modules"))
 from core.app import ResearchAssistantApp
 
 # پیکربندی جدید برای arabic-reshaper
@@ -38,15 +42,18 @@ class MainApp(ctk.CTk):
         self.geometry("1400x800")
         self.minsize(1200, 700)
         
-        # تنظیم تم و ظاهر
-        ctk.set_appearance_mode("System")
+        # بارگذاری تنظیمات
+        self.settings = self.load_settings()
+        
+        # تنظیم تم و ظاهر بر اساس تنظیمات
+        ctk.set_appearance_mode(self.settings.get("theme_mode", "System"))
         ctk.set_default_color_theme("blue")
         
         # تنظیم فونت فارسی
         self.setup_persian_font()
         
         # ایجاد برنامه اصلی
-        self.app = ResearchAssistantApp(self)
+        self.app = ResearchAssistantApp(self, self.settings)
         self.app.pack(fill="both", expand=True)
         
         # مرکز پنجره
@@ -55,6 +62,48 @@ class MainApp(ctk.CTk):
         # ذخیره تنظیمات هنگام بسته شدن برنامه
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
+    def load_settings(self):
+        """بارگذاری تنظیمات از فایل"""
+        settings_file = os.path.join(os.path.dirname(__file__), "config", "settings.json")
+        default_settings = {
+            "theme_mode": "System",
+            "font_size": 14,
+            "sidebar_width": 250,
+            "language": "fa",
+            "auto_save": True,
+            "notifications": True,
+            "backup_interval": 24,
+            "font_family": "Vazirmatn"
+        }
+        
+        try:
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r', encoding='utf-8') as f:
+                    loaded_settings = json.load(f)
+                    # ادغام تنظیمات پیش‌فرض با تنظیمات بارگذاری شده
+                    for key in default_settings:
+                        if key in loaded_settings:
+                            default_settings[key] = loaded_settings[key]
+        except Exception as e:
+            print(f"خطا در بارگذاری تنظیمات: {e}")
+        
+        return default_settings
+    
+    def save_settings(self):
+        """ذخیره تنظیمات در فایل"""
+        try:
+            settings_file = os.path.join(os.path.dirname(__file__), "config", "settings.json")
+            config_dir = os.path.dirname(settings_file)
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir)
+                
+            with open(settings_file, 'w', encoding='utf-8') as f:
+                json.dump(self.settings, f, ensure_ascii=False, indent=4)
+            return True
+        except Exception as e:
+            print(f"خطا در ذخیره تنظیمات: {e}")
+            return False
+    
     def setup_persian_font(self):
         """تنظیم فونت فارسی"""
         try:
@@ -81,16 +130,26 @@ class MainApp(ctk.CTk):
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
     
+    def apply_settings(self, new_settings):
+        """اعمال تنظیمات جدید"""
+        self.settings.update(new_settings)
+        
+        # اعمال تغییرات تم
+        ctk.set_appearance_mode(self.settings.get("theme_mode", "System"))
+        
+        # ذخیره تنظیمات
+        self.save_settings()
+        
+        # به روزرسانی UI برنامه
+        if hasattr(self, 'app'):
+            self.app.update_ui_with_settings(self.settings)
+    
     def on_closing(self):
         """ذخیره تنظیمات هنگام بستن برنامه"""
         try:
             # ذخیره تنظیمات فعلی
-            if hasattr(self, 'app') and hasattr(self.app, 'config'):
-                self.app.config.set("theme_mode", self.app.theme_mode)
-                self.app.config.set("font_size", self.app.font_size)
-                self.app.config.set("sidebar_width", self.app.sidebar_width)
-                self.app.config.set("language", self.app.language.get_current_language())
-                print("تنظیمات ذخیره شدند.")
+            self.save_settings()
+            print("تنظیمات ذخیره شدند.")
         except Exception as e:
             print(f"خطا در ذخیره تنظیمات: {e}")
         finally:

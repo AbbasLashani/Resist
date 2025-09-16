@@ -2,60 +2,23 @@ import json
 import os
 
 class LanguageManager:
-    def __init__(self, config):
+    def __init__(self, config=None):
         self.config = config
-        self.current_language = self.config.get("language", "fa")
+        self.current_language = self.get_initial_language()
         self.translations = self.load_translations()
     
+    def get_initial_language(self):
+        """دریافت زبان اولیه از config یا استفاده از پیش‌فرض"""
+        if self.config:
+            return self.config.get("language", "fa")
+        return "fa"
+    
     def load_translations(self):
-        """بارگذاری ترجمه‌ها از فایل‌های JSON"""
-        try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            lang_dir = os.path.join(base_dir, "assets", "lang")
-            
-            # ایجاد پوشه اگر وجود ندارد
-            os.makedirs(lang_dir, exist_ok=True)
-            
-            # مسیر فایل زبان
-            lang_file = os.path.join(lang_dir, f"{self.current_language}.json")
-            
-            # اگر فایل زبان وجود ندارد، ایجادش کن
-            if not os.path.exists(lang_file):
-                self.create_language_file(lang_file)
-            
-            # بارگذاری ترجمه‌ها از فایل
-            with open(lang_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-                
-        except Exception as e:
-            print(f"خطا در بارگذاری ترجمه‌ها: {e}")
-            return self.get_default_translations()
-    
-    def create_language_file(self, file_path):
-        """ایجاد فایل زبان اگر وجود ندارد"""
-        try:
-            # تعیین ترجمه‌های پیش‌فرض بر اساس زبان
-            if "fa" in file_path:
-                translations = self.get_default_translations("fa")
-            else:
-                translations = self.get_default_translations("en")
-            
-            # ذخیره ترجمه‌ها در فایل
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(translations, f, ensure_ascii=False, indent=4)
-                
-            print(f"فایل زبان ایجاد شد: {file_path}")
-            
-        except Exception as e:
-            print(f"خطا در ایجاد فایل زبان: {e}")
-    
-    def get_default_translations(self, language=None):
-        """دریافت ترجمه‌های پیش‌فرض"""
-        if language is None:
-            language = self.current_language
-            
-        if language == "fa":
-            return {
+        """بارگذاری ترجمه‌ها از فایل"""
+        translations_file = os.path.join(os.path.dirname(__file__), "..", "config", "translations.json")
+        
+        default_translations = {
+            "fa": {
                 "app_title": "دستیار تحقیقاتی",
                 "status_ready": "آماده",
                 "db_status": "پایگاه داده: فعال",
@@ -76,10 +39,13 @@ class LanguageManager:
                 "module_development": "ماژول {} در حال توسعه است",
                 "notes_development": "ماژول یادداشت‌ها به زودی اضافه خواهد شد",
                 "persian": "فارسی",
-                "english": "انگلیسی"
-            }
-        else:
-            return {
+                "english": "انگلیسی",
+                "auto_save": "ذخیره خودکار",
+                "notifications": "اعلان‌ها",
+                "backup_interval": "فاصله پشتیبان‌گیری",
+                "success": "موفقیت"
+            },
+            "en": {
                 "app_title": "Research Assistant",
                 "status_ready": "Ready",
                 "db_status": "Database: Active",
@@ -96,27 +62,49 @@ class LanguageManager:
                 "sidebar_width": "Sidebar Width",
                 "language": "Language",
                 "save_changes": "Save Changes",
-                "changes_saved": "Settings saved successfully",
-                "module_development": "{} module is under development",
+                "changes_saved": "Settings saved",
+                "module_development": "Module {} is under development",
                 "notes_development": "Notes module will be added soon",
                 "persian": "Persian",
-                "english": "English"
+                "english": "English",
+                "auto_save": "Auto Save",
+                "notifications": "Notifications",
+                "backup_interval": "Backup Interval",
+                "success": "Success"
             }
+        }
+        
+        try:
+            if os.path.exists(translations_file):
+                with open(translations_file, 'r', encoding='utf-8') as f:
+                    loaded_translations = json.load(f)
+                    # ادغام ترجمه‌های پیش‌فرض با ترجمه‌های بارگذاری شده
+                    for lang in ["fa", "en"]:
+                        if lang in loaded_translations:
+                            default_translations[lang].update(loaded_translations[lang])
+        except Exception as e:
+            print(f"خطا در بارگذاری ترجمه‌ها: {e}")
+        
+        return default_translations
     
     def set_language(self, language_code):
-        """تغییر زبان"""
-        self.current_language = language_code
-        self.translations = self.load_translations()
-        return True
+        """تغییر زبان برنامه"""
+        if language_code in self.translations:
+            self.current_language = language_code
+            # ذخیره در config اگر وجود دارد
+            if self.config:
+                self.config.set("language", language_code)
+            return True
+        return False
     
-    def get_text(self, key, default=None):
+    def get_text(self, key):
         """دریافت متن ترجمه شده"""
-        return self.translations.get(key, default) if default is None else self.translations.get(key, default)
+        return self.translations.get(self.current_language, {}).get(key, key)
     
     def get_current_language(self):
         """دریافت زبان فعلی"""
         return self.current_language
     
     def is_rtl(self):
-        """آیا زبان راست به چپ است؟"""
+        """بررسی آیا زبان فعلی راست به چپ است"""
         return self.current_language == "fa"

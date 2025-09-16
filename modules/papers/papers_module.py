@@ -1,12 +1,13 @@
 import customtkinter as ctk
+import tkinter as tk
+from tkinter import messagebox, Menu
 from core.base_module import BaseModule
-from tkinter import ttk
-import sqlite3
-from datetime import datetime
+from core.database import Database
 
 class PapersModule(BaseModule):
     def __init__(self, parent, app, config):
         super().__init__(parent, app, config)
+        self.db = Database(config)
         self.setup_ui()
     
     def setup_ui(self):
@@ -19,130 +20,126 @@ class PapersModule(BaseModule):
         main_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
         main_frame.pack(fill="both", expand=True)
         
-        # هدر با دکمه actions
-        header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        header_frame.pack(fill="x", padx=20, pady=20)
-        
+        # عنوان ماژول
+        title_text = "مدیریت مقالات" if self.language.is_rtl() else "Papers Management"
         title = self.create_label(
-            header_frame,
-            text="مدیریت مقالات" if self.language.is_rtl() else "Papers Management",
+            main_frame,
+            text=title_text,
             font=ctk.CTkFont(size=24, weight="bold")
         )
-        title.pack(side="right" if self.language.is_rtl() else "left")
+        title.pack(pady=20)
         
-        # دکمه‌های action
-        actions_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
-        actions_frame.pack(side="left" if self.language.is_rtl() else "right")
+        # نوار ابزار
+        toolbar_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        toolbar_frame.pack(fill="x", padx=20, pady=10)
         
-        add_btn = self.create_button(
-            actions_frame,
-            text="➕ افزودن مقاله",
-            command=self.add_paper,
-            font=ctk.CTkFont(size=14),
-            height=35,
-            width=120,
-            fg_color="#4CAF50",
-            hover_color="#45a049"
-        )
-        add_btn.pack(side="right" if self.language.is_rtl() else "left", padx=5)
-        
-        import_btn = self.create_button(
-            actions_frame,
-            text="📥 وارد کردن",
-            command=self.import_papers,
-            font=ctk.CTkFont(size=14),
-            height=35,
-            width=100
-        )
-        import_btn.pack(side="right" if self.language.is_rtl() else "left", padx=5)
-        
-        # نوار جستجو
-        search_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        search_frame.pack(fill="x", padx=20, pady=(0, 20))
-        
-        search_entry = ctk.CTkEntry(
-            search_frame,
-            placeholder_text="جستجوی مقالات..." if self.language.is_rtl() else "Search papers...",
-            height=40,
-            font=ctk.CTkFont(size=14)
-        )
-        search_entry.pack(side="right" if self.language.is_rtl() else "left", fill="x", expand=True, padx=(10, 0))
-        
-        search_btn = self.create_button(
-            search_frame,
-            text="🔍",
-            command=lambda: self.search_papers(search_entry.get()),
-            font=ctk.CTkFont(size=16),
-            height=40,
-            width=50
-        )
-        search_btn.pack(side="right" if self.language.is_rtl() else "left")
-        
-        # جدول مقالات
-        table_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        
-        # ایجاد Treeview با سبک مدرن
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("Treeview.Heading", background="#f0f0f0", foreground="#333333", font=('Tahoma', 10, 'bold'))
-        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", foreground="#333333", font=('Tahoma', 9))
-        style.map("Treeview", background=[('selected', '#0078D7')])
-        
-        columns = ("title", "authors", "journal", "year", "tags")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
-        
-        # تعریف ستون‌ها
-        self.tree.heading("title", text="عنوان" if self.language.is_rtl() else "Title")
-        self.tree.heading("authors", text="نویسندگان" if self.language.is_rtl() else "Authors")
-        self.tree.heading("journal", text="ژورنال" if self.language.is_rtl() else "Journal")
-        self.tree.heading("year", text="سال" if self.language.is_rtl() else "Year")
-        self.tree.heading("tags", text="برچسب‌ها" if self.language.is_rtl() else "Tags")
-        
-        # تنظیم عرض ستون‌ها
-        self.tree.column("title", width=250)
-        self.tree.column("authors", width=150)
-        self.tree.column("journal", width=120)
-        self.tree.column("year", width=60)
-        self.tree.column("tags", width=120)
-        
-        # نوار اسکرول
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-        
-        self.tree.pack(side="right" if self.language.is_rtl() else "left", fill="both", expand=True)
-        scrollbar.pack(side="left" if self.language.is_rtl() else "right", fill="y")
-        
-        # بارگذاری داده‌ها
-        self.load_papers_data()
-        
-        # منوی راست‌کلیک
-        self.setup_context_menu()
-    
-    def load_papers_data(self):
-        """بارگذاری داده‌های مقالات از پایگاه داده"""
-        # پاک کردن داده‌های موجود
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        # نمونه داده‌های تست
-        sample_data = [
-            ("تحلیل داده‌های بزرگ در تحقیقات پزشکی", "احمدی، محمدی", "مجله پزشکی", "2023", "داده‌کاوی,پزشکی"),
-            ("یادگیری عمیق در پردازش تصویر", "رضایی، حسینی", "کنفرانس هوش مصنوعی", "2022", "یادگیری عمیق,پردازش تصویر"),
-            ("بررسی روش‌های رمزنگاری جدید", "جعفری، کریمی", "مجله امنیت", "2023", "امنیت,رمزنگاری"),
-            ("کاربردهای IoT در صنعت", "محمودی، قاسمی", "کنفرانس فناوری", "2022", "IoT,صنعت"),
-            ("تحلیل احساسات در شبکه‌های اجتماعی", "اکبری، امینی", "مجله پردازش زبان", "2023", "پردازش زبان,شبکه اجتماعی")
+        # دکمه‌های نوار ابزار
+        buttons = [
+            {"text": "مقاله جدید", "icon": "➕", "command": self.add_paper},
+            {"text": "ویرایش", "icon": "✏️", "command": self.edit_paper},
+            {"text": "حذف", "icon": "🗑️", "command": self.delete_paper},
+            {"text": "نمایش", "icon": "👁️", "command": self.view_paper}
         ]
         
-        # اضافه کردن داده‌ها به جدول
-        for data in sample_data:
-            self.tree.insert("", "end", values=data)
+        for i, btn in enumerate(buttons):
+            button = ctk.CTkButton(
+                toolbar_frame,
+                text=f"{btn['icon']} {btn['text']}" if not self.language.is_rtl() else f"{btn['text']} {btn['icon']}",
+                command=btn["command"],
+                height=35,
+                width=120
+            )
+            button.grid(row=0, column=i, padx=5)
+        
+        # لیست مقالات
+        list_frame = ctk.CTkFrame(main_frame, corner_radius=12)
+        list_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # عنوان لیست
+        list_title = self.create_label(
+            list_frame,
+            text="لیست مقالات" if self.language.is_rtl() else "Papers List",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        list_title.pack(pady=15)
+        
+        # ایجاد Treeview برای نمایش مقالات
+        self.create_papers_treeview(list_frame)
+        
+        # بارگذاری مقالات
+        self.load_papers()
     
-    def setup_context_menu(self):
-        """تنظیم منوی راست‌کلیک"""
-        self.context_menu = ctk.CTkMenu(self, tearoff=0)
+    def create_papers_treeview(self, parent):
+        """ایجاد Treeview برای نمایش مقالات"""
+        # ایجاد فریم برای Treeview
+        tree_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        tree_frame.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        
+        # ایجاد Treeview با ستون‌ها
+        columns = ("title", "author", "year", "journal")
+        column_names = {
+            "title": "عنوان",
+            "author": "نویسنده",
+            "year": "سال",
+            "journal": "ژورنال"
+        }
+        
+        if not self.language.is_rtl():
+            column_names = {
+                "title": "Title",
+                "author": "Author",
+                "year": "Year",
+                "journal": "Journal"
+            }
+        
+        self.tree = tk.ttk.Treeview(
+            tree_frame,
+            columns=columns,
+            show="headings",
+            height=15
+        )
+        
+        # تعریف ستون‌ها
+        for col in columns:
+            self.tree.heading(col, text=column_names[col])
+            self.tree.column(col, width=150, anchor="center")
+        
+        # نوار اسکرول
+        scrollbar = tk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        # قرار دادن Treeview و نوار اسکرول
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # اتصال رویداد کلیک
+        self.tree.bind("<Button-1>", self.on_tree_click)
+        self.tree.bind("<Button-3>", self.on_right_click)  # کلیک راست
+    
+    def on_tree_click(self, event):
+        """واکنش به کلیک روی Treeview"""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+    
+    def on_right_click(self, event):
+        """واکنش به کلیک راست روی Treeview"""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            # ایجاد منوی زمینه
+            self.create_context_menu(event)
+    
+    def create_context_menu(self, event):
+        """ایجاد منوی زمینه"""
+        # حذف منوی قبلی اگر وجود دارد
+        if hasattr(self, 'context_menu'):
+            self.context_menu.destroy()
+        
+        # ایجاد منوی زمینه با tkinter
+        self.context_menu = Menu(self, tearoff=0)
         self.context_menu.add_command(
-            label="مشاهده" if self.language.is_rtl() else "View",
+            label="نمایش" if self.language.is_rtl() else "View",
             command=self.view_paper
         )
         self.context_menu.add_command(
@@ -154,49 +151,89 @@ class PapersModule(BaseModule):
             command=self.delete_paper
         )
         
-        # اتصال رویداد راست‌کلیک
-        self.tree.bind("<Button-3>", self.show_context_menu)
+        # نمایش منو در موقعیت کلیک
+        self.context_menu.post(event.x_root, event.y_root)
     
-    def show_context_menu(self, event):
-        """نمایش منوی راست‌کلیک"""
-        item = self.tree.identify_row(event.y)
-        if item:
-            self.tree.selection_set(item)
-            self.context_menu.post(event.x_root, event.y_root)
+    def load_papers(self):
+        """بارگذاری مقالات از پایگاه داده"""
+        # پاک کردن Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        # داده‌های نمونه (موقت)
+        sample_data = [
+            ("تحقیق در مورد هوش مصنوعی", "علی محمدی", "2023", "ژورنال علوم کامپیوتر"),
+            ("یادگیری عمیق و کاربردهای آن", "رضا احمدی", "2022", "کنفرانس بین‌المللی"),
+            ("پردازش زبان طبیعی", "فاطمه زهرا حسینی", "2023", "مجله مهندسی نرم‌افزار")
+        ]
+        
+        if not self.language.is_rtl():
+            sample_data = [
+                ("Research on Artificial Intelligence", "Ali Mohammadi", "2023", "Computer Science Journal"),
+                ("Deep Learning and Applications", "Reza Ahmadi", "2022", "International Conference"),
+                ("Natural Language Processing", "Fatima Zahra Hosseini", "2023", "Software Engineering Journal")
+            ]
+        
+        # اضافه کردن داده‌ها به Treeview
+        for data in sample_data:
+            self.tree.insert("", "end", values=data)
     
     def add_paper(self):
         """افزودن مقاله جدید"""
-        print("افزودن مقاله جدید")
-        # اینجا می‌توانید دیالوگ افزودن مقاله را باز کنید
-    
-    def import_papers(self):
-        """وارد کردن مقالات"""
-        print("وارد کردن مقالات")
-    
-    def search_papers(self, query):
-        """جستجوی مقالات"""
-        print(f"جستجو برای: {query}")
-    
-    def view_paper(self):
-        """مشاهده مقاله انتخاب شده"""
-        selected_item = self.tree.selection()
-        if selected_item:
-            item_data = self.tree.item(selected_item[0])
-            print(f"مشاهده مقاله: {item_data['values'][0]}")
+        messagebox.showinfo(
+            "مقاله جدید" if self.language.is_rtl() else "New Paper",
+            "افزودن مقاله جدید" if self.language.is_rtl() else "Add new paper"
+        )
     
     def edit_paper(self):
         """ویرایش مقاله انتخاب شده"""
-        selected_item = self.tree.selection()
-        if selected_item:
-            item_data = self.tree.item(selected_item[0])
-            print(f"ویرایش مقاله: {item_data['values'][0]}")
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning(
+                "هشدار" if self.language.is_rtl() else "Warning",
+                "لطفاً یک مقاله انتخاب کنید" if self.language.is_rtl() else "Please select a paper"
+            )
+            return
+        
+        messagebox.showinfo(
+            "ویرایش مقاله" if self.language.is_rtl() else "Edit Paper",
+            "ویرایش مقاله" if self.language.is_rtl() else "Edit paper"
+        )
     
     def delete_paper(self):
         """حذف مقاله انتخاب شده"""
-        selected_item = self.tree.selection()
-        if selected_item:
-            item_data = self.tree.item(selected_item[0])
-            print(f"حذف مقاله: {item_data['values'][0]}")
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning(
+                "هشدار" if self.language.is_rtl() else "Warning",
+                "لطفاً یک مقاله انتخاب کنید" if self.language.is_rtl() else "Please select a paper"
+            )
+            return
+        
+        result = messagebox.askyesno(
+            "تأیید حذف" if self.language.is_rtl() else "Confirm Delete",
+            "آیا از حذف مقاله انتخاب شده مطمئن هستید؟" if self.language.is_rtl() else "Are you sure you want to delete the selected paper?"
+        )
+        
+        if result:
+            for item in selected:
+                self.tree.delete(item)
+    
+    def view_paper(self):
+        """نمایش مقاله انتخاب شده"""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning(
+                "هشدار" if self.language.is_rtl() else "Warning",
+                "لطفاً یک مقاله انتخاب کنید" if self.language.is_rtl() else "Please select a paper"
+            )
+            return
+        
+        item = self.tree.item(selected[0])
+        messagebox.showinfo(
+            "نمایش مقاله" if self.language.is_rtl() else "View Paper",
+            f"نمایش مقاله: {item['values'][0]}" if self.language.is_rtl() else f"Viewing paper: {item['values'][0]}"
+        )
     
     def refresh_language(self):
         """تازه‌سازی متن‌ها بر اساس زبان جدید"""

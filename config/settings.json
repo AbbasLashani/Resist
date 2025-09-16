@@ -1,0 +1,10 @@
+{
+    "theme_mode": "Dark",
+    "font_size": 14,
+    "sidebar_width": 200,
+    "language": "fa",
+    "auto_save": true,
+    "notifications": true,
+    "backup_interval": 24,
+    "font_family": "Vazirmatn"
+}

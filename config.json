@@ -17,8 +17,11 @@
         "font_family": "Vazirmatn",
         "font_size": 14
     },
-    "font_size": 18,
+    "font_size": 14,
     "theme_mode": "Dark",
-    "sidebar_width": 180,
-    "language": "fa"
+    "sidebar_width": 200,
+    "language": "fa",
+    "auto_save": true,
+    "notifications": true,
+    "backup_interval": 24
 }
