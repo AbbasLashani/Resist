@@ -6,11 +6,8 @@ from bidi.algorithm import get_display
 import json
 
 # اضافه کردن مسیر ماژول‌ها به sys.path
-#sys.path.append(os.path.join(os.path.dirname(__file__)))
-# اضافه کردن مسیر ماژول‌ها به sys.path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-sys.path.append(os.path.join(current_dir, "modules"))
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+
 from core.app import ResearchAssistantApp
 
 # پیکربندی جدید برای arabic-reshaper
@@ -109,15 +106,27 @@ class MainApp(ctk.CTk):
         try:
             # مسیر فونت را نسبت به فایل اصلی برنامه می‌سازیم
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            font_path = os.path.join(base_dir, "assets", "fonts", "Vazirmatn-Regular.ttf")
+            fonts_dir = os.path.join(base_dir, "assets", "fonts")
             
-            if os.path.exists(font_path):
-                # اضافه کردن فونت به مدیریت فونت‌های customtkinter
-                ctk.FontManager.load_font(font_path)
-                print("فونت فارسی با موفقیت بارگذاری شد.")
-            else:
-                print("فونت فارسی یافت نشد، از فونت پیش‌فرض استفاده می‌شود")
-                print("مسیر جستجو شده:", font_path)
+            # ایجاد پوشه فونت اگر وجود ندارد
+            if not os.path.exists(fonts_dir):
+                os.makedirs(fonts_dir)
+                print("پوشه فونت ایجاد شد. لطفاً فونت‌های فارسی را در آن قرار دهید.")
+            
+            # بارگذاری فونت‌ها
+            font_files = {
+                "Vazirmatn-Regular.ttf": "https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-Regular.ttf",
+            }
+            
+            for font_file in font_files:
+                font_path = os.path.join(fonts_dir, font_file)
+                if os.path.exists(font_path):
+                    # اضافه کردن فونت به مدیریت فونت‌های customtkinter
+                    ctk.FontManager.load_font(font_path)
+                    print(f"فونت {font_file} با موفقیت بارگذاری شد.")
+                else:
+                    print(f"فونت {font_file} یافت نشد. می‌توانید آن را از {font_files[font_file]} دانلود کنید.")
+                    print("مسیر جستجو شده:", font_path)
         except Exception as e:
             print(f"خطا در تنظیمات فونت: {e}")
     

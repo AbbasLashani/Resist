@@ -1,7 +1,7 @@
 {
-    "theme_mode": "Dark",
-    "font_size": 14,
-    "sidebar_width": 200,
+    "theme_mode": "system",
+    "font_size": 16,
+    "sidebar_width": 300,
     "language": "fa",
     "auto_save": true,
     "notifications": true,

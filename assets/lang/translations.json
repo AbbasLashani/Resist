@@ -12,6 +12,7 @@
     "settings": "تنظیمات",
     "settings_title": "تنظیمات برنامه",
     "theme": "تم",
+    "font_family": "نوع فونت",
     "font_size": "اندازه فونت",
     "sidebar_width": "عرض سایدبار",
     "language": "زبان",
@@ -20,7 +21,17 @@
     "module_development": "ماژول {} در حال توسعه است",
     "notes_development": "ماژول یادداشت‌ها به زودی اضافه خواهد شد",
     "persian": "فارسی",
-    "english": "انگلیسی"
+    "english": "انگلیسی",
+    "auto_save": "ذخیره خودکار",
+    "notifications": "اعلان‌ها",
+    "backup_interval": "فاصله پشتیبان‌گیری",
+    "success": "موفقیت",
+    "back_to_dashboard": "بازگشت به داشبورد",
+    "on": "روشن",
+    "off": "خاموش",
+    "light": "روشن",
+    "dark": "تاریک",
+    "system": "سیستم"
   },
   "en": {
     "app_title": "Research Assistant",
@@ -35,6 +46,7 @@
     "settings": "Settings",
     "settings_title": "Application Settings",
     "theme": "Theme",
+    "font_family": "Font Family",
     "font_size": "Font Size",
     "sidebar_width": "Sidebar Width",
     "language": "Language",
@@ -43,6 +55,16 @@
     "module_development": "Module {} is under development",
     "notes_development": "Notes module will be added soon",
     "persian": "Persian",
-    "english": "English"
+    "english": "English",
+    "auto_save": "Auto Save",
+    "notifications": "Notifications",
+    "backup_interval": "Backup Interval",
+    "success": "Success",
+    "back_to_dashboard": "Back to Dashboard",
+    "on": "On",
+    "off": "Off",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
   }
 }

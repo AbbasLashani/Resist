@@ -5,6 +5,7 @@ from .event_bus import EventBus
 from .theme_manager import ThemeManager
 from .language_manager import LanguageManager
 from .rtl_support import reshape_text, set_widget_rtl, set_widget_ltr
+from .font_manager import FontManager
 import importlib
 import os
 
@@ -16,7 +17,12 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.db = Database(self.config)
         self.event_bus = EventBus()
         self.theme = ThemeManager()
-        self.language = LanguageManager(self.config)
+        
+        # ایجاد language_manager - و حفظ compatibility با ماژول‌های موجود
+        self.language_manager = LanguageManager(self.config)
+        self.language = self.language_manager  # برای compatibility با ماژول‌های قدیمی
+        
+        self.font_manager = FontManager(self.config)
         
         # استفاده از تنظیمات ارسال شده یا بارگذاری از config
         self.settings = settings if settings else {}
@@ -27,14 +33,25 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.sidebar_width = self.settings.get("sidebar_width", self.config.get("sidebar_width", 200))
         self.language_code = self.settings.get("language", self.config.get("language", "fa"))
         
+        # دیباگ: چک کردن مقادیر زبان
+        print(f"🔍 دیباگ زبان:")
+        print(f"   - زبان از settings: {self.settings.get('language', 'Not found')}")
+        print(f"   - زبان از config: {self.config.get('language', 'Not found')}")
+        print(f"   - زبان نهایی: {self.language_code}")
+        
         # تنظیم زبان
-        self.language.set_language(self.language_code)
+        self.language_manager.set_language(self.language_code)
+        
+        # دیباگ بعد از تنظیم زبان
+        print(f"   - زبان تنظیم شده: {self.language_manager.current_language}")
+        print(f"   - آیا RTL است: {self.language_manager.is_rtl()}")
+        print(f"   - متن تست: {self.language_manager.get_text('app_title')}")
         
         self.current_module = None
         self.modules = {}
         self.current_module_name = "dashboard"
         
-        self.setup_ui()  # این خط باید بعد از مقداردهی تمام متغیرها باشد
+        self.setup_ui()
         self.load_modules()
         self.setup_event_listeners()
         
@@ -43,6 +60,8 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
     def setup_ui(self):
         """ایجاد رابط کاربری اصلی با پشتیبانی RTL/LTR"""
+        print(f"🔧 ایجاد UI - زبان: {self.language_code}, RTL: {self.language_manager.is_rtl()}")
+        
         # پاک کردن ویجت‌های موجود
         for widget in self.winfo_children():
             widget.destroy()
@@ -58,12 +77,12 @@ class ResearchAssistantApp(ctk.CTkFrame):
         # تنظیم grid برای فریم اصلی
         self.main_container.grid_rowconfigure(0, weight=1)
         
-        if self.language.is_rtl():
-            # برای فارسی: سایدبار در ستون 1، محتوا در ستون 0
+        if self.language_manager.is_rtl():
+            print("   - استفاده از چیدمان RTL (فارسی)")
             self.main_container.grid_columnconfigure(0, weight=1)  # محتوا
             self.main_container.grid_columnconfigure(1, weight=0)  # سایدبار
         else:
-            # برای انگلیسی: سایدبار در ستون 0، محتوا در ستون 1
+            print("   - استفاده از چیدمان LTR (انگلیسی)")
             self.main_container.grid_columnconfigure(0, weight=0)  # سایدبار
             self.main_container.grid_columnconfigure(1, weight=1)  # محتوا
         
@@ -74,7 +93,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.sidebar = self.create_sidebar()
         
         # چیدمان بر اساس زبان
-        if self.language.is_rtl():
+        if self.language_manager.is_rtl():
             # برای فارسی: سایدبار در راست، محتوا در چپ
             self.sidebar.grid(row=0, column=1, sticky="ns", padx=(10, 0), pady=0)
             self.content_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=0)
@@ -89,26 +108,37 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def create_sidebar(self):
         """ایجاد نوار کناری با پشتیبانی RTL/LTR"""
+        print(f"   - ایجاد سایدبار - RTL: {self.language_manager.is_rtl()}")
+        
         sidebar = ctk.CTkFrame(self.main_container, width=self.sidebar_width, corner_radius=10)
         sidebar.grid_propagate(False)
         
+        # ایجاد فریم برای هدر برای کنترل بهتر
+        header_frame = ctk.CTkFrame(sidebar, fg_color="transparent", height=50)
+        header_frame.pack(pady=(10, 5), padx=10, fill="x")
+        header_frame.pack_propagate(False)
+        
         # هدر نوار کناری
-        header_text = f"📚 {self.language.get_text('app_title')}"
-        if self.language.is_rtl():
-            header_text = reshape_text(header_text)
+        header_text = f"📚 {self.language_manager.get_text('app_title')}"
+        if self.language_manager.is_rtl():
+            header_text = self.language_manager.reshape_text(header_text)
             
         header = ctk.CTkLabel(
-            sidebar,
+            header_frame,
             text=header_text,
-            font=ctk.CTkFont(size=16, weight="bold"),
+            font=self.font_manager.get_font(16, "bold"),
             height=40
         )
-        header.pack(pady=(15, 10), padx=15, fill="x")
         
-        if self.language.is_rtl():
-            set_widget_rtl(header)
+        # موقعیت‌گذاری بر اساس زبان
+        if self.language_manager.is_rtl():
+            header.pack(side="right", padx=10, fill="x", expand=True)
+            header.configure(anchor="e", justify="right")
+            self.language_manager.set_widget_rtl(header)
         else:
-            set_widget_ltr(header)
+            header.pack(side="left", padx=10, fill="x", expand=True)
+            header.configure(anchor="w", justify="left")
+            self.language_manager.set_widget_ltr(header)
         
         # دکمه‌های ماژول‌ها
         modules = [
@@ -125,29 +155,87 @@ class ResearchAssistantApp(ctk.CTkFrame):
         menu_frame.pack(fill="both", expand=True, padx=8, pady=8)
         
         for icon, module_name in modules:
-            btn_text = f"{icon} {self.language.get_text(module_name)}"
-            if self.language.is_rtl():
-                btn_text = reshape_text(btn_text)
+            # ایجاد یک تابع برای مدیریت hover و کلیک
+            def create_menu_item(icon=icon, module_name=module_name):
+                # ایجاد فریم اصلی برای آیتم منو
+                menu_item = ctk.CTkFrame(
+                    menu_frame, 
+                    height=35, 
+                    corner_radius=8,
+                    fg_color=("#F0F0F0", "#2B2B2B")
+                )
+                menu_item.pack(pady=3, fill="x")
+                menu_item.pack_propagate(False)
                 
-            btn = ctk.CTkButton(
-                menu_frame,
-                text=btn_text,
-                font=ctk.CTkFont(size=self.font_size - 1),
-                height=35,
-                corner_radius=8,
-                anchor="e" if self.language.is_rtl() else "w",
-                fg_color=("#F0F0F0", "#2B2B2B"),
-                hover_color=("#E0E0E0", "#3C3C3C"),
-                text_color=("#000000", "#FFFFFF"),
-                border_width=0,
-                command=lambda mn=module_name: self.switch_module(mn)
-            )
-            btn.pack(pady=3, fill="x")
+                # ایجاد فریم داخلی برای محتوا
+                content_frame = ctk.CTkFrame(menu_item, fg_color="transparent")
+                content_frame.pack(fill="both", expand=True, padx=15)
+                
+                # متن ماژول
+                btn_text = self.language_manager.get_text(module_name)
+                if self.language_manager.is_rtl():
+                    btn_text = self.language_manager.reshape_text(btn_text)
+                
+                print(f"     * {module_name}: {btn_text}")
+                
+                # لیبل آیکون
+                icon_label = ctk.CTkLabel(
+                    content_frame,
+                    text=icon,
+                    font=self.font_manager.get_font(self.font_size),
+                    text_color=("#000000", "#FFFFFF"),
+                    width=25
+                )
+                
+                # لیبل متن
+                text_label = ctk.CTkLabel(
+                    content_frame,
+                    text=btn_text,
+                    font=self.font_manager.get_font(self.font_size - 1),
+                    text_color=("#000000", "#FFFFFF")
+                )
+                
+                # چیدمان بر اساس RTL/LTR
+                if self.language_manager.is_rtl():
+                    # برای فارسی: متن سپس آیکون
+                    text_label.pack(side="right", fill="y", expand=True)
+                    icon_label.pack(side="right", fill="y")
+                    text_label.configure(anchor="e")
+                    icon_label.configure(anchor="e")
+                    self.language_manager.set_widget_rtl(text_label)
+                    self.language_manager.set_widget_rtl(icon_label)
+                else:
+                    # برای انگلیسی: آیکون سپس متن
+                    icon_label.pack(side="left", fill="y")
+                    text_label.pack(side="left", fill="y", expand=True, padx=(5, 0))
+                    text_label.configure(anchor="w")
+                    icon_label.configure(anchor="w")
+                    self.language_manager.set_widget_ltr(text_label)
+                    self.language_manager.set_widget_ltr(icon_label)
+                
+                # مدیریت hover effects
+                def on_enter(e):
+                    menu_item.configure(fg_color=("#E0E0E0", "#3C3C3C"))
+                    content_frame.configure(fg_color=("#E0E0E0", "#3C3C3C"))
+                
+                def on_leave(e):
+                    menu_item.configure(fg_color=("#F0F0F0", "#2B2B2B"))
+                    content_frame.configure(fg_color="transparent")
+                
+                def on_click(e):
+                    self.switch_module(module_name)
+                
+                # bind events به کل فریم‌ها
+                for widget in [menu_item, content_frame, icon_label, text_label]:
+                    widget.bind("<Enter>", on_enter)
+                    widget.bind("<Leave>", on_leave)
+                    widget.bind("<Button-1>", on_click)
+                    # فعال کردن cursor pointer
+                    widget.configure(cursor="hand2")
+                
+                return menu_item
             
-            if self.language.is_rtl():
-                set_widget_rtl(btn)
-            else:
-                set_widget_ltr(btn)
+            create_menu_item()
         
         return sidebar
     
@@ -156,38 +244,38 @@ class ResearchAssistantApp(ctk.CTkFrame):
         status_bar = ctk.CTkFrame(self.main_container, height=25, corner_radius=8)
         
         # وضعیت اتصال
-        status_text = f"✅ {self.language.get_text('status_ready')}"
-        if self.language.is_rtl():
-            status_text = reshape_text(status_text)
+        status_text = f"✅ {self.language_manager.get_text('status_ready')}"
+        if self.language_manager.is_rtl():
+            status_text = self.language_manager.reshape_text(status_text)
             
         status_label = ctk.CTkLabel(
             status_bar,
             text=status_text,
-            font=ctk.CTkFont(size=self.font_size - 2)
+            font=self.font_manager.get_font(self.font_size - 2)
         )
         
         # اطلاعات پایگاه داده
-        db_text = self.language.get_text('db_status')
-        if self.language.is_rtl():
-            db_text = reshape_text(db_text)
+        db_text = self.language_manager.get_text('db_status')
+        if self.language_manager.is_rtl():
+            db_text = self.language_manager.reshape_text(db_text)
             
         db_info = ctk.CTkLabel(
             status_bar,
             text=db_text,
-            font=ctk.CTkFont(size=self.font_size - 2)
+            font=self.font_manager.get_font(self.font_size - 2)
         )
         
         # چیدمان بر اساس زبان
-        if self.language.is_rtl():
+        if self.language_manager.is_rtl():
             status_label.pack(side="right", padx=8)
             db_info.pack(side="left", padx=8)
-            set_widget_rtl(status_label)
-            set_widget_rtl(db_info)
+            self.language_manager.set_widget_rtl(status_label)
+            self.language_manager.set_widget_rtl(db_info)
         else:
             status_label.pack(side="left", padx=8)
             db_info.pack(side="right", padx=8)
-            set_widget_ltr(status_label)
-            set_widget_ltr(db_info)
+            self.language_manager.set_widget_ltr(status_label)
+            self.language_manager.set_widget_ltr(db_info)
         
         return status_bar
     
@@ -205,27 +293,133 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
         for name, path in module_paths.items():
             try:
-                # برای ماژول‌های research و writer از import مستقیم استفاده می‌کنیم
+                print(f"🔍 در حال بارگذاری ماژول: {name}")
+                
                 if name == "research":
                     from modules.research.research_module import ResearchModule
                     self.modules[name] = ResearchModule(self.content_frame, self, self.config)
+                    print(f"✅ ماژول {name} بارگذاری شد")
+                    
                 elif name == "writer":
                     from modules.writer.writer_module import WriterModule
                     self.modules[name] = WriterModule(self.content_frame, self, self.config)
+                    print(f"✅ ماژول {name} بارگذاری شد")
+                    
                 elif name == "settings":
                     # ماژول تنظیمات با پارامترهای اضافی
-                    from modules.settings.settings_module import SettingsModule
-                    self.modules[name] = SettingsModule(self.content_frame, self, self.config, self.settings)
+                    try:
+                        from modules.settings.settings_module import SettingsModule
+                        self.modules[name] = SettingsModule(self.content_frame, self, self.config, self.settings)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # ایجاد ماژول ساده برای تنظیمات
+                        self.modules[name] = self.create_settings_fallback()
+                        
+                elif name == "dashboard":
+                    # ماژول داشبورد - import مستقیم
+                    try:
+                        from modules.dashboard.dashboard_module import DashboardModule
+                        self.modules[name] = DashboardModule(self.content_frame, self, self.config)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        self.modules[name] = self.create_fallback_module(name)
+                        
                 else:
                     # برای ماژول‌های دیگر از روش معمول استفاده می‌کنیم
-                    module = importlib.import_module(path)
-                    module_class = getattr(module, f"{name.capitalize()}Module")
-                    self.modules[name] = module_class(self.content_frame, self, self.config)
+                    try:
+                        module = importlib.import_module(path)
+                        module_class = getattr(module, f"{name.capitalize()}Module")
+                        self.modules[name] = module_class(self.content_frame, self, self.config)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        self.modules[name] = self.create_fallback_module(name)
+                        
             except Exception as e:
-                print(f"Error loading module {name}: {e}")
+                print(f"❌ خطای کلی در بارگذاری ماژول {name}: {e}")
+                import traceback
+                traceback.print_exc()
                 self.modules[name] = self.create_fallback_module(name)
         
+        # نمایش ماژول‌های بارگذاری شده
+        print(f"📦 ماژول‌های بارگذاری شده: {list(self.modules.keys())}")
+        
+        # بررسی اینکه هر ماژول چه نوعی است
+        for name, module in self.modules.items():
+            module_type = type(module).__name__
+            print(f"   - {name}: {module_type}")
+        
         self.switch_module(self.current_module_name)
+    
+    def create_settings_fallback(self):
+        """ایجاد ماژول تنظیمات جایگزین"""
+        fallback = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        
+        # عنوان
+        title_text = self.language_manager.get_text('settings_title')
+        if self.language_manager.is_rtl():
+            title_text = self.language_manager.reshape_text(title_text)
+            
+        title = ctk.CTkLabel(
+            fallback,
+            text=title_text,
+            font=self.font_manager.get_font(20, "bold")
+        )
+        title.pack(pady=20)
+        
+        # پیام خطا
+        error_text = "ماژول تنظیمات در حال توسعه است\nبه زودی در دسترس خواهد شد"
+        if self.language_manager.is_rtl():
+            error_text = self.language_manager.reshape_text(error_text)
+            
+        error_label = ctk.CTkLabel(
+            fallback,
+            text=error_text,
+            font=self.font_manager.get_font(16),
+            text_color=("#2E2E2E", "#E0E0E0")
+        )
+        error_label.pack(pady=10)
+        
+        # آیکون
+        icon_label = ctk.CTkLabel(
+            fallback,
+            text="⚙️",
+            font=self.font_manager.get_font(48),
+            text_color=("#FF9800", "#FFB74D")
+        )
+        icon_label.pack(pady=20)
+        
+        # دکمه بازگشت
+        back_button = ctk.CTkButton(
+            fallback,
+            text=self.language_manager.get_text('back_to_dashboard'),
+            command=lambda: self.switch_module("dashboard"),
+            width=200,
+            height=40
+        )
+        back_button.pack(pady=20)
+        
+        # اعمال ترازبندی RTL/LTR
+        if self.language_manager.is_rtl():
+            self.language_manager.set_widget_rtl(title)
+            self.language_manager.set_widget_rtl(error_label)
+            self.language_manager.set_widget_rtl(icon_label)
+            self.language_manager.set_widget_rtl(back_button)
+        else:
+            self.language_manager.set_widget_ltr(title)
+            self.language_manager.set_widget_ltr(error_label)
+            self.language_manager.set_widget_ltr(icon_label)
+            self.language_manager.set_widget_ltr(back_button)
+        
+        return fallback
     
     def create_fallback_module(self, name):
         """ایجاد ماژول جایگزین در صورت خطا"""
@@ -233,30 +427,22 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
         # تعیین متن بر اساس نوع ماژول
         if name == "notes":
-            label_text = self.language.get_text('notes_development')
+            label_text = self.language_manager.get_text('notes_development')
         else:
-            label_text = self.language.get_text('module_development').format(
-                self.language.get_text(name) if hasattr(self.language, 'get_text') else name
+            label_text = self.language_manager.get_text('module_development').format(
+                self.language_manager.get_text(name)
             )
         
         # تغییر شکل متن برای RTL اگر لازم باشد
-        if hasattr(self.language, 'is_rtl') and self.language.is_rtl():
-            if hasattr(self.language, 'reshape_text'):
-                label_text = self.language.reshape_text(label_text)
-            else:
-                # اگر تابع reshape_text وجود ندارد، از تابع عمومی استفاده کنید
-                try:
-                    from core.rtl_support import reshape_text
-                    label_text = reshape_text(label_text)
-                except ImportError:
-                    pass
+        if self.language_manager.is_rtl():
+            label_text = self.language_manager.reshape_text(label_text)
         
         # ایجاد برچسب
         label = ctk.CTkLabel(
             fallback,
             text=label_text,
-            font=ctk.CTkFont(size=16),
-            text_color=("#2E2E2E", "#E0E0E0")  # رنگ متن برای تم روشن و تاریک
+            font=self.font_manager.get_font(16),
+            text_color=("#2E2E2E", "#E0E0E0")
         )
         label.pack(expand=True, padx=20, pady=20)
         
@@ -264,15 +450,15 @@ class ResearchAssistantApp(ctk.CTkFrame):
         icon_label = ctk.CTkLabel(
             fallback,
             text="🚧" if name != "notes" else "📝",
-            font=ctk.CTkFont(size=48),
-            text_color=("#FF9800", "#FFB74D")  # رنگ نارنجی برای تم روشن و تاریک
+            font=self.font_manager.get_font(48),
+            text_color=("#FF9800", "#FFB74D")
         )
         icon_label.pack(pady=(0, 20))
         
         # اضافه کردن دکمه برای بازگشت یا اقدام دیگر
         back_button = ctk.CTkButton(
             fallback,
-            text=self.language.get_text('back_to_dashboard') if hasattr(self.language, 'get_text') else "بازگشت به داشبورد",
+            text=self.language_manager.get_text('back_to_dashboard'),
             command=lambda: self.switch_module("dashboard"),
             width=200,
             height=40,
@@ -283,43 +469,26 @@ class ResearchAssistantApp(ctk.CTkFrame):
         back_button.pack(pady=10)
         
         # اعمال ترازبندی RTL/LTR
-        if hasattr(self.language, 'is_rtl') and self.language.is_rtl():
-            if hasattr(self.language, 'set_widget_rtl'):
-                self.language.set_widget_rtl(label)
-                self.language.set_widget_rtl(icon_label)
-                self.language.set_widget_rtl(back_button)
-            else:
-                # اگر تابع set_widget_rtl وجود ندارد، از توابع عمومی استفاده کنید
-                try:
-                    from core.rtl_support import set_widget_rtl
-                    set_widget_rtl(label)
-                    set_widget_rtl(icon_label)
-                    set_widget_rtl(back_button)
-                except ImportError:
-                    # ترازبندی دستی در صورت عدم وجود ماژول RTL
-                    label.configure(anchor="e")
-                    back_button.configure(anchor="e")
+        if self.language_manager.is_rtl():
+            self.language_manager.set_widget_rtl(label)
+            self.language_manager.set_widget_rtl(icon_label)
+            self.language_manager.set_widget_rtl(back_button)
         else:
-            if hasattr(self.language, 'set_widget_ltr'):
-                self.language.set_widget_ltr(label)
-                self.language.set_widget_ltr(icon_label)
-                self.language.set_widget_ltr(back_button)
-            else:
-                # ترازبندی چپ برای LTR
-                label.configure(anchor="w")
-                back_button.configure(anchor="w")
+            self.language_manager.set_widget_ltr(label)
+            self.language_manager.set_widget_ltr(icon_label)
+            self.language_manager.set_widget_ltr(back_button)
         
         # اضافه کردن اطلاعات دیباگ برای توسعه دهندگان
         if self.config.get("debug_mode", False):
             debug_label = ctk.CTkLabel(
                 fallback,
                 text=f"Module: {name}\nError: Failed to load module",
-                font=ctk.CTkFont(size=12),
+                font=self.font_manager.get_font(12),
                 text_color=("#666666", "#AAAAAA")
             )
             debug_label.pack(side="bottom", pady=10)
             
-            if hasattr(self.language, 'is_rtl') and self.language.is_rtl():
+            if self.language_manager.is_rtl():
                 debug_label.configure(anchor="e")
             else:
                 debug_label.configure(anchor="w")
@@ -328,6 +497,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def switch_module(self, module_name):
         """تعویض ماژول فعال"""
+        print(f"🔄 تعویض ماژول به: {module_name}")
         self.current_module_name = module_name
         
         if self.current_module:
@@ -337,6 +507,9 @@ class ResearchAssistantApp(ctk.CTkFrame):
             self.current_module = self.modules[module_name]
             self.current_module.pack(fill="both", expand=True)
             self.event_bus.publish("module_changed", {"module": module_name})
+            print(f"✅ ماژول {module_name} نمایش داده شد")
+        else:
+            print(f"❌ ماژول {module_name} یافت نشد")
     
     def refresh_ui(self):
         """تازه‌سازی رابط کاربری"""
@@ -364,6 +537,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         self.event_bus.subscribe("sidebar_width_changed", self.on_sidebar_width_changed)
         self.event_bus.subscribe("language_changed", self.on_language_changed)
         self.event_bus.subscribe("settings_changed", self.on_settings_changed)
+        self.event_bus.subscribe("font_changed", self.on_font_changed)
     
     def on_theme_changed(self, data):
         """واکنش به تغییر تم"""
@@ -389,9 +563,24 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def on_language_changed(self, data):
         """واکنش به تغییر زبان"""
-        self.language.set_language(data["language"])
+        self.language_manager.set_language(data["language"])
         self.config.set("language", data["language"])
         self.refresh_ui()
+    
+    def on_font_changed(self, data):
+        """واکنش به تغییر فونت"""
+        if "font_family" in data:
+            self.font_manager.set_font_family(data["font_family"])
+        
+        if "font_size" in data:
+            self.font_manager.set_font_size(data["font_size"])
+            self.font_size = data["font_size"]
+        
+        # به روزرسانی فونت‌ها در کل UI
+        self.update_all_fonts()
+        
+        # انتشار رویداد برای ماژول‌ها
+        self.event_bus.publish("font_changed", data)
     
     def on_settings_changed(self, data):
         """واکنش به تغییر تنظیمات"""
@@ -411,6 +600,9 @@ class ResearchAssistantApp(ctk.CTkFrame):
         if "language" in data:
             self.on_language_changed({"language": data["language"]})
         
+        if "font_family" in data or "font_size" in data:
+            self.on_font_changed(data)
+        
         # ذخیره تنظیمات در config
         for key, value in data.items():
             self.config.set(key, value)
@@ -418,13 +610,58 @@ class ResearchAssistantApp(ctk.CTkFrame):
         # انتشار رویداد برای سایر ماژول‌ها
         self.event_bus.publish("settings_updated", data)
     
+    def update_all_fonts(self):
+        """به روزرسانی فونت تمام ویجت‌ها در برنامه"""
+        try:
+            # به روزرسانی فونت در ویجت‌های اصلی
+            self.apply_font_to_widgets(self)
+            
+            # به روزرسانی فونت در سایدبار
+            self.apply_font_to_widgets(self.sidebar)
+            
+            # به روزرسانی فونت در status bar
+            self.apply_font_to_widgets(self.status_bar)
+            
+            # به روزرسانی فونت در content frame
+            self.apply_font_to_widgets(self.content_frame)
+            
+            # به روزرسانی فونت در ماژول فعال
+            if self.current_module:
+                self.apply_font_to_widgets(self.current_module)
+            
+            print("✅ فونت‌ها در کل برنامه به روز شدند")
+            
+        except Exception as e:
+            print(f"❌ خطا در به روزرسانی فونت‌ها: {e}")
+    
+    def apply_font_to_widgets(self, parent_widget):
+        """اعمال فونت به تمام ویجت‌های فرزند"""
+        try:
+            for widget in parent_widget.winfo_children():
+                # اگر ویجت دارای ویژگی font است
+                if hasattr(widget, 'configure'):
+                    try:
+                        # سعی کن فونت جدید اعمال کنی
+                        new_font = self.font_manager.get_font()
+                        widget.configure(font=new_font)
+                    except:
+                        # اگر خطا داد، ادامه بده
+                        pass
+                
+                # اعمال بازگشتی به فرزندان
+                if widget.winfo_children():
+                    self.apply_font_to_widgets(widget)
+                    
+        except Exception as e:
+            print(f"⚠️ خطا در اعمال فونت به ویجت: {e}")
+    
     def update_ui_with_settings(self, settings):
         """به روزرسانی UI با تنظیمات جدید"""
         self.settings = settings
         
         # اعمال تغییرات زبان
         if "language" in settings:
-            self.language.set_language(settings["language"])
+            self.language_manager.set_language(settings["language"])
             self.update_ui_texts()
         
         # اعمال تغییرات عرض نوار کناری
@@ -433,7 +670,13 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
         # اعمال تغییرات فونت
         if "font_size" in settings:
-            self.update_font_size(settings["font_size"])
+            self.font_manager.set_font_size(settings["font_size"])
+            self.font_size = settings["font_size"]
+            self.update_all_fonts()
+        
+        if "font_family" in settings:
+            self.font_manager.set_font_family(settings["font_family"])
+            self.update_all_fonts()
         
         # اعمال تغییرات تم
         if "theme_mode" in settings:
@@ -441,12 +684,10 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def update_font_size(self, size):
         """به روزرسانی اندازه فونت"""
-        # به روزرسانی فونت تمام ویجت‌ها
-        for widget in self.winfo_children():
-            if hasattr(widget, 'configure') and 'font' in widget.configure():
-                current_font = widget.cget("font")
-                if isinstance(current_font, tuple):
-                    new_font = (current_font[0], size)
-                else:
-                    new_font = (current_font, size)
-                widget.configure(font=new_font)
+        self.font_manager.set_font_size(size)
+        self.update_all_fonts()
+    
+    def update_ui_texts(self):
+        """به روزرسانی متون UI بر اساس زبان انتخاب شده"""
+        # این متد می‌تواند برای به روزرسانی متون استاتیک استفاده شود
+        pass

@@ -1,49 +1,44 @@
+# core/base_module.py
 import customtkinter as ctk
+from .language_manager import LanguageManager
 from .rtl_support import reshape_text, set_widget_rtl, set_widget_ltr
 
 class BaseModule(ctk.CTkFrame):
     def __init__(self, parent, app, config):
         super().__init__(parent, fg_color="transparent")
+        self.parent = parent
         self.app = app
         self.config = config
-        self.language = app.language
+        self.language = LanguageManager(config)
         
-    def setup_ui(self):
-        """ایجاد رابط کاربری - باید در کلاس فرزند پیاده‌سازی شود"""
-        pass
-    
-    def refresh_language(self):
-        """تازه‌سازی متن‌ها بر اساس زبان جدید"""
-        # این متد باید در کلاس فرزند پیاده‌سازی شود
-        pass
-    
-    def apply_text_alignment(self, widget):
-        """اعمال تراز متن بر اساس زبان"""
-        if self.language.is_rtl():
-            set_widget_rtl(widget)
-        else:
-            set_widget_ltr(widget)
-    
     def create_label(self, parent, text, **kwargs):
-        """ایجاد برچسب با تراز خودکار"""
+        """ایجاد لیبل با پشتیبانی RTL"""
         if self.language.is_rtl():
             text = reshape_text(text)
             
         label = ctk.CTkLabel(parent, text=text, **kwargs)
-        self.apply_text_alignment(label)
+        
+        if self.language.is_rtl():
+            set_widget_rtl(label)
+        else:
+            set_widget_ltr(label)
+            
         return label
     
-    def create_button(self, parent, text, command, **kwargs):
-        """ایجاد دکمه با تراز خودکار"""
+    def create_button(self, parent, text, **kwargs):
+        """ایجاد دکمه با پشتیبانی RTL"""
         if self.language.is_rtl():
             text = reshape_text(text)
             
-        btn = ctk.CTkButton(
-            parent, 
-            text=text, 
-            command=command,
-            anchor="e" if self.language.is_rtl() else "w",
-            **kwargs
-        )
-        self.apply_text_alignment(btn)
-        return btn
+        button = ctk.CTkButton(parent, text=text, **kwargs)
+        
+        if self.language.is_rtl():
+            set_widget_rtl(button)
+        else:
+            set_widget_ltr(button)
+            
+        return button
+    
+    def refresh_language(self):
+        """تازه‌سازی زبان - باید در کلاس فرزند پیاده‌سازی شود"""
+        pass

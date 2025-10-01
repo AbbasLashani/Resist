@@ -1,3 +1,4 @@
+# event_bus.py
 class EventBus:
     def __init__(self):
         self.subscribers = {}
@@ -10,9 +11,13 @@ class EventBus:
     
     def publish(self, event_type, data):
         """انتشار رویداد"""
+        print(f"🎯 Event Published: {event_type} - {data}")
         if event_type in self.subscribers:
             for callback in self.subscribers[event_type]:
-                callback(data)
+                try:
+                    callback(data)
+                except Exception as e:
+                    print(f"Error in event callback: {e}")
     
     def unsubscribe(self, event_type, callback):
         """لغو اشتراک رویداد"""

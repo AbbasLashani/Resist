@@ -17,11 +17,12 @@
         "font_family": "Vazirmatn",
         "font_size": 14
     },
-    "font_size": 14,
-    "theme_mode": "Dark",
-    "sidebar_width": 200,
+    "font_size": 16,
+    "theme_mode": "system",
+    "sidebar_width": 300,
     "language": "fa",
     "auto_save": true,
     "notifications": true,
-    "backup_interval": 24
+    "backup_interval": 24,
+    "font_family": "Vazirmatn"
 }
