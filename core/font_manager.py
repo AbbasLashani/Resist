@@ -1,70 +1,117 @@
 import customtkinter as ctk
+import json
 import os
 
 class FontManager:
-    def __init__(self, config):
+    def __init__(self, config=None):
         self.config = config
-        self.font_families = self.load_font_families()
-        self.current_font = self.config.get("font_family", "Vazirmatn")
-        self.font_size = self.config.get("font_size", 14)
+        self.font_family = self.get_font_family()
+        self.font_size = self.get_font_size()
         
-    def load_font_families(self):
-        """بارگذاری فونت‌های موجود"""
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        fonts_dir = os.path.join(base_dir, "assets", "fonts")
+        # فونت‌های پایه
+        self.fonts = {}
+        self.update_fonts()
         
-        font_families = {
-            "Vazirmatn": os.path.join(fonts_dir, "Vazirmatn-Regular.ttf"),
-            "B Nazanin": os.path.join(fonts_dir, "B-Nazanin.ttf"),
-            "Iran Sans": os.path.join(fonts_dir, "IRANSans.ttf"),
-            "Default": None  # فونت پیش‌فرض سیستم
-        }
-        
-        # بررسی وجود فایل‌های فونت
-        for font_name, font_path in font_families.items():
-            if font_path and not os.path.exists(font_path):
-                print(f"هشدار: فونت {font_name} در مسیر {font_path} یافت نشد.")
-        
-        return font_families
+        print(f"🔤 FontManager initialized: {self.font_family}, size: {self.font_size}")
+    
+    def get_font_family(self):
+        """دریافت خانواده فونت از config"""
+        if self.config:
+            try:
+                if hasattr(self.config, 'get'):
+                    return self.config.get("font_family", "Tahoma")
+                else:
+                    return self.config.get("font_family", "Tahoma")
+            except:
+                pass
+        return "Tahoma"
+    
+    def get_font_size(self):
+        """دریافت سایز فونت از config"""
+        if self.config:
+            try:
+                if hasattr(self.config, 'get'):
+                    return int(self.config.get("font_size", 14))
+                else:
+                    return int(self.config.get("font_size", 14))
+            except:
+                pass
+        return 14
+    
+    def update_fonts(self):
+        """بروزرسانی تمام فونت‌ها با تنظیمات فعلی"""
+        try:
+            # فونت‌های اصلی با سایزهای مختلف
+            self.fonts = {
+                "title": ctk.CTkFont(family=self.font_family, size=self.font_size + 6, weight="bold"),
+                "heading": ctk.CTkFont(family=self.font_family, size=self.font_size + 2, weight="bold"),
+                "subheading": ctk.CTkFont(family=self.font_family, size=self.font_size, weight="bold"),
+                "normal": ctk.CTkFont(family=self.font_family, size=self.font_size),
+                "small": ctk.CTkFont(family=self.font_family, size=self.font_size - 2),
+                "tiny": ctk.CTkFont(family=self.font_family, size=self.font_size - 4)
+            }
+            print(f"✅ فونت‌ها بروزرسانی شدند: {self.font_family} - سایز: {self.font_size}")
+        except Exception as e:
+            print(f"❌ خطا در بروزرسانی فونت‌ها: {e}")
+            # فونت‌های fallback
+            self.fonts = {
+                "title": ctk.CTkFont(size=20, weight="bold"),
+                "heading": ctk.CTkFont(size=16, weight="bold"),
+                "subheading": ctk.CTkFont(size=14, weight="bold"),
+                "normal": ctk.CTkFont(size=14),
+                "small": ctk.CTkFont(size=12),
+                "tiny": ctk.CTkFont(size=10)
+            }
     
     def get_font(self, size=None, weight="normal"):
-        """دریافت فونت با اندازه و وزن مشخص"""
+        """دریافت فونت با سایز و وزن مشخص"""
         if size is None:
             size = self.font_size
-        
-        # اگر فونت سفارشی وجود دارد، از آن استفاده کن
-        if self.current_font in self.font_families and self.font_families[self.current_font]:
-            try:
-                # بارگذاری فونت اگر قبلاً بارگذاری نشده
-                if self.font_families[self.current_font]:
-                    ctk.FontManager.load_font(self.font_families[self.current_font])
-                
-                # ایجاد فونت با مشخصات داده شده
-                font_family = self.current_font
-                if weight == "bold":
-                    font_family += " Bold"
-                
-                return ctk.CTkFont(family=font_family, size=size)
-            except Exception as e:
-                print(f"خطا در بارگذاری فونت: {e}")
-                return ctk.CTkFont(size=size)
-        
-        # استفاده از فونت پیش‌فرض
-        return ctk.CTkFont(size=size)
-    
-    def set_font_family(self, font_family):
-        """تغییر خانواده فونت"""
-        if font_family in self.font_families:
-            self.current_font = font_family
-            self.config.set("font_family", font_family)
-            return True
-        return False
+            
+        try:
+            if weight == "bold":
+                if size >= 18:
+                    return self.fonts["title"]
+                elif size >= 16:
+                    return self.fonts["heading"]
+                else:
+                    return self.fonts["subheading"]
+            else:
+                if size <= 10:
+                    return self.fonts["tiny"]
+                elif size <= 12:
+                    return self.fonts["small"]
+                else:
+                    return self.fonts["normal"]
+        except:
+            return ctk.CTkFont(size=size, weight=weight)
     
     def set_font_size(self, size):
-        """تغییر اندازه فونت"""
-        self.font_size = size
-        self.config.set("font_size", size)
+        """تنظیم سایز فونت جدید"""
+        try:
+            self.font_size = int(size)
+            self.update_fonts()
+            print(f"🔤 سایز فونت تغییر کرد به: {self.font_size}")
+            return True
+        except Exception as e:
+            print(f"❌ خطا در تنظیم سایز فونت: {e}")
+            return False
     
-    def get_available_fonts(self):
-        """دریافت لیست فونت‌های موجود"""
-        return list(self.font_families.keys())
+    def set_font_family(self, family):
+        """تنظیم خانواده فونت جدید"""
+        try:
+            self.font_family = family
+            self.update_fonts()
+            print(f"🔤 خانواده فونت تغییر کرد به: {self.font_family}")
+            return True
+        except Exception as e:
+            print(f"❌ خطا در تنظیم خانواده فونت: {e}")
+            return False
+    
+    def get_current_font_info(self):
+        """دریافت اطلاعات فونت فعلی"""
+        return {
+            "family": self.font_family,
+            "size": self.font_size,
+            "fonts": list(self.fonts.keys())
+        }

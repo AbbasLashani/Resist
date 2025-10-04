@@ -64,7 +64,11 @@ class ResearchAssistantApp(ctk.CTkFrame):
         
         # پاک کردن ویجت‌های موجود
         for widget in self.winfo_children():
-            widget.destroy()
+            try:
+                if widget.winfo_exists():
+                    widget.destroy()
+            except:
+                pass
         
         # Configure grid
         self.grid_rowconfigure(0, weight=1)
@@ -144,6 +148,7 @@ class ResearchAssistantApp(ctk.CTkFrame):
         modules = [
             ("🏠", "dashboard"),
             ("📄", "papers"),
+            ("📋", "datasheets"),
             ("📅", "planner"),
             ("📝", "notes"),
             ("🔍", "research"),
@@ -215,23 +220,29 @@ class ResearchAssistantApp(ctk.CTkFrame):
                 
                 # مدیریت hover effects
                 def on_enter(e):
-                    menu_item.configure(fg_color=("#E0E0E0", "#3C3C3C"))
-                    content_frame.configure(fg_color=("#E0E0E0", "#3C3C3C"))
+                    if menu_item.winfo_exists():
+                        menu_item.configure(fg_color=("#E0E0E0", "#3C3C3C"))
+                        content_frame.configure(fg_color=("#E0E0E0", "#3C3C3C"))
                 
                 def on_leave(e):
-                    menu_item.configure(fg_color=("#F0F0F0", "#2B2B2B"))
-                    content_frame.configure(fg_color="transparent")
+                    if menu_item.winfo_exists():
+                        menu_item.configure(fg_color=("#F0F0F0", "#2B2B2B"))
+                        content_frame.configure(fg_color="transparent")
                 
                 def on_click(e):
-                    self.switch_module(module_name)
+                    if menu_item.winfo_exists():
+                        self.switch_module(module_name)
                 
                 # bind events به کل فریم‌ها
                 for widget in [menu_item, content_frame, icon_label, text_label]:
-                    widget.bind("<Enter>", on_enter)
-                    widget.bind("<Leave>", on_leave)
-                    widget.bind("<Button-1>", on_click)
-                    # فعال کردن cursor pointer
-                    widget.configure(cursor="hand2")
+                    try:
+                        widget.bind("<Enter>", on_enter)
+                        widget.bind("<Leave>", on_leave)
+                        widget.bind("<Button-1>", on_click)
+                        # فعال کردن cursor pointer
+                        widget.configure(cursor="hand2")
+                    except:
+                        pass
                 
                 return menu_item
             
@@ -281,45 +292,24 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def load_modules(self):
         """بارگذاری ماژول‌ها"""
+        print(f"🔍 در حال بارگذاری ماژول‌ها...")
+        
         module_paths = {
             "dashboard": "modules.dashboard.dashboard_module",
             "papers": "modules.papers.papers_module",
-            "planner": "modules.planner.planner_module",
+            "planner": "modules.planner.planner_module",  # اضافه شده
             "notes": "modules.notes.notes_module",
             "research": "modules.research.research_module",
             "writer": "modules.writer.writer_module",
+            "datasheets": "modules.datasheets.datasheets_module",
             "settings": "modules.settings.settings_module"
         }
         
         for name, path in module_paths.items():
             try:
-                print(f"🔍 در حال بارگذاری ماژول: {name}")
+                print(f"📦 بارگذاری ماژول: {name}")
                 
-                if name == "research":
-                    from modules.research.research_module import ResearchModule
-                    self.modules[name] = ResearchModule(self.content_frame, self, self.config)
-                    print(f"✅ ماژول {name} بارگذاری شد")
-                    
-                elif name == "writer":
-                    from modules.writer.writer_module import WriterModule
-                    self.modules[name] = WriterModule(self.content_frame, self, self.config)
-                    print(f"✅ ماژول {name} بارگذاری شد")
-                    
-                elif name == "settings":
-                    # ماژول تنظیمات با پارامترهای اضافی
-                    try:
-                        from modules.settings.settings_module import SettingsModule
-                        self.modules[name] = SettingsModule(self.content_frame, self, self.config, self.settings)
-                        print(f"✅ ماژول {name} بارگذاری شد")
-                    except Exception as e:
-                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
-                        import traceback
-                        traceback.print_exc()
-                        # ایجاد ماژول ساده برای تنظیمات
-                        self.modules[name] = self.create_settings_fallback()
-                        
-                elif name == "dashboard":
-                    # ماژول داشبورد - import مستقیم
+                if name == "dashboard":
                     try:
                         from modules.dashboard.dashboard_module import DashboardModule
                         self.modules[name] = DashboardModule(self.content_frame, self, self.config)
@@ -330,18 +320,76 @@ class ResearchAssistantApp(ctk.CTkFrame):
                         traceback.print_exc()
                         self.modules[name] = self.create_fallback_module(name)
                         
-                else:
-                    # برای ماژول‌های دیگر از روش معمول استفاده می‌کنیم
+                elif name == "papers":
                     try:
-                        module = importlib.import_module(path)
-                        module_class = getattr(module, f"{name.capitalize()}Module")
-                        self.modules[name] = module_class(self.content_frame, self, self.config)
-                        print(f"✅ ماژول {name} بارگذاری شد")
+                        if os.path.exists("modules/papers/papers_module.py"):
+                            from modules.papers.papers_module import PapersModule
+                            self.modules[name] = PapersModule(self.content_frame, self, self.config)
+                            print(f"✅ ماژول {name} بارگذاری شد")
+                        else:
+                            print(f"⚠️ فایل ماژول {name} یافت نشد")
+                            self.modules[name] = self.create_fallback_module(name)
                     except Exception as e:
                         print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
                         import traceback
                         traceback.print_exc()
                         self.modules[name] = self.create_fallback_module(name)
+                
+                # بخش جدید: بارگذاری ماژول برنامه‌ریزی
+                elif name == "planner":
+                    try:
+                        if os.path.exists("modules/planner/planner_module.py"):
+                            from modules.planner.planner_module import PlanningModule
+                            self.modules[name] = PlanningModule(self.content_frame, self, self.config)
+                            print(f"✅ ماژول {name} بارگذاری شد")
+                        else:
+                            print(f"⚠️ فایل ماژول {name} یافت نشد")
+                            self.modules[name] = self.create_fallback_module(name)
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        self.modules[name] = self.create_fallback_module(name)
+                        
+                elif name == "research":
+                    try:
+                        from modules.research.research_module import ResearchModule
+                        self.modules[name] = ResearchModule(self.content_frame, self, self.config)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        self.modules[name] = self.create_fallback_module(name)
+                    
+                elif name == "writer":
+                    try:
+                        from modules.writer.writer_module import WriterModule  
+                        self.modules[name] = WriterModule(self.content_frame, self, self.config)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        self.modules[name] = self.create_fallback_module(name)
+
+                elif name == "datasheets":
+                    try:
+                        from modules.datasheets.datasheets_module import DatasheetsModule  
+                        self.modules[name] = DatasheetsModule(self.content_frame, self, self.config)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        self.modules[name] = self.create_fallback_module(name) 
+
+                elif name == "settings":
+                    try:
+                        from modules.settings.settings_module import SettingsModule
+                        self.modules[name] = SettingsModule(self.content_frame, self, self.config, self.settings)
+                        print(f"✅ ماژول {name} بارگذاری شد")
+                    except Exception as e:
+                        print(f"❌ خطا در بارگذاری ماژول {name}: {e}")
+                        self.modules[name] = self.create_settings_fallback()
+                else:
+                    # برای ماژول‌های دیگر از fallback استفاده کن
+                    print(f"⚠️ ماژول {name} موجود نیست، از fallback استفاده می‌شود")
+                    self.modules[name] = self.create_fallback_module(name)
                         
             except Exception as e:
                 print(f"❌ خطای کلی در بارگذاری ماژول {name}: {e}")
@@ -350,14 +398,15 @@ class ResearchAssistantApp(ctk.CTkFrame):
                 self.modules[name] = self.create_fallback_module(name)
         
         # نمایش ماژول‌های بارگذاری شده
-        print(f"📦 ماژول‌های بارگذاری شده: {list(self.modules.keys())}")
+        print(f"🎯 ماژول‌های بارگذاری شده: {list(self.modules.keys())}")
         
         # بررسی اینکه هر ماژول چه نوعی است
         for name, module in self.modules.items():
             module_type = type(module).__name__
             print(f"   - {name}: {module_type}")
         
-        self.switch_module(self.current_module_name)
+        # حتماً ماژول dashboard رو فعال کن
+        self.switch_module("dashboard")
     
     def create_settings_fallback(self):
         """ایجاد ماژول تنظیمات جایگزین"""
@@ -500,34 +549,56 @@ class ResearchAssistantApp(ctk.CTkFrame):
         print(f"🔄 تعویض ماژول به: {module_name}")
         self.current_module_name = module_name
         
-        if self.current_module:
-            self.current_module.pack_forget()
+        if self.current_module and self.current_module.winfo_exists():
+            try:
+                self.current_module.pack_forget()
+            except:
+                pass
         
-        if module_name in self.modules:
+        if module_name in self.modules and self.modules[module_name].winfo_exists():
             self.current_module = self.modules[module_name]
-            self.current_module.pack(fill="both", expand=True)
-            self.event_bus.publish("module_changed", {"module": module_name})
-            print(f"✅ ماژول {module_name} نمایش داده شد")
+            try:
+                self.current_module.pack(fill="both", expand=True)
+                self.event_bus.publish("module_changed", {"module": module_name})
+                print(f"✅ ماژول {module_name} نمایش داده شد")
+            except Exception as e:
+                print(f"❌ خطا در نمایش ماژول {module_name}: {e}")
         else:
-            print(f"❌ ماژول {module_name} یافت نشد")
+            print(f"❌ ماژول {module_name} یافت نشد یا وجود ندارد")
     
-    def refresh_ui(self):
-        """تازه‌سازی رابط کاربری"""
-        # ذخیره ماژول فعلی
-        current_module_name = self.current_module_name
-        
-        # پاک کردن ویجت‌های موجود
-        for widget in self.main_container.winfo_children():
-            widget.destroy()
-        
-        # ساخت مجدد رابط کاربری
-        self.setup_ui()
-        
-        # بارگذاری مجدد ماژول‌ها
-        self.load_modules()
-        
-        # بازگرداندن به ماژول قبلی
-        self.switch_module(current_module_name)
+    def safe_refresh_ui(self):
+        """تازه‌سازی ایمن رابط کاربری"""
+        try:
+            # ذخیره ماژول فعلی
+            current_module_name = self.current_module_name
+            
+            # توقف موقت event processing
+            self.update_idletasks()
+            
+            # پاک کردن ویجت‌های موجود با مدیریت خطا
+            for widget in self.main_container.winfo_children():
+                try:
+                    if widget.winfo_exists():
+                        widget.destroy()
+                except Exception as e:
+                    print(f"⚠️ خطا در حذف ویجت: {e}")
+            
+            # ساخت مجدد رابط کاربری
+            self.setup_ui()
+            
+            # بارگذاری مجدد ماژول‌ها
+            self.load_modules()
+            
+            # بازگرداندن به ماژول قبلی
+            if current_module_name in self.modules:
+                self.after(200, lambda: self.switch_module(current_module_name))
+            else:
+                self.after(200, lambda: self.switch_module("dashboard"))
+                
+        except Exception as e:
+            print(f"❌ خطا در تازه‌سازی ایمن UI: {e}")
+            import traceback
+            traceback.print_exc()
     
     def setup_event_listeners(self):
         """تنظیم شنوندگان رویداد"""
@@ -541,9 +612,10 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def on_theme_changed(self, data):
         """واکنش به تغییر تم"""
-        self.theme_mode = data["theme"]
-        ctk.set_appearance_mode(self.theme_mode)
-        self.config.set("theme_mode", self.theme_mode)
+        if "theme" in data:
+            self.theme_mode = data["theme"]
+            ctk.set_appearance_mode(self.theme_mode)
+            self.config.set("theme_mode", self.theme_mode)
     
     def on_module_changed(self, data):
         """واکنش به تغییر ماژول"""
@@ -551,107 +623,146 @@ class ResearchAssistantApp(ctk.CTkFrame):
     
     def on_font_size_changed(self, data):
         """واکنش به تغییر اندازه فونت"""
-        self.font_size = data["size"]
-        self.config.set("font_size", self.font_size)
-        self.refresh_ui()
+        if "size" in data:
+            self.font_size = data["size"]
+            self.config.set("font_size", self.font_size)
+            self.safe_refresh_ui()
     
     def on_sidebar_width_changed(self, data):
         """واکنش به تغییر عرض سایدبار"""
-        self.sidebar_width = data["width"]
-        self.config.set("sidebar_width", self.sidebar_width)
-        self.refresh_ui()
+        if "width" in data:
+            self.sidebar_width = data["width"]
+            self.config.set("sidebar_width", self.sidebar_width)
+            self.safe_refresh_ui()
     
     def on_language_changed(self, data):
         """واکنش به تغییر زبان"""
-        self.language_manager.set_language(data["language"])
-        self.config.set("language", data["language"])
-        self.refresh_ui()
+        if "language" in data:
+            self.language_manager.set_language(data["language"])
+            self.config.set("language", data["language"])
+            self.safe_refresh_ui()
     
     def on_font_changed(self, data):
         """واکنش به تغییر فونت"""
-        if "font_family" in data:
-            self.font_manager.set_font_family(data["font_family"])
-        
-        if "font_size" in data:
-            self.font_manager.set_font_size(data["font_size"])
-            self.font_size = data["font_size"]
-        
-        # به روزرسانی فونت‌ها در کل UI
-        self.update_all_fonts()
-        
-        # انتشار رویداد برای ماژول‌ها
-        self.event_bus.publish("font_changed", data)
+        try:
+            print("🔤 دریافت event تغییر فونت")
+            self.update_all_fonts()
+        except Exception as e:
+            print(f"⚠️ خطا در تغییر فونت: {e}")
     
     def on_settings_changed(self, data):
-        """واکنش به تغییر تنظیمات"""
-        # به روزرسانی تنظیمات
-        self.settings.update(data)
-        
-        # اعمال تغییرات
-        if "theme_mode" in data:
-            self.on_theme_changed({"theme": data["theme_mode"]})
-        
-        if "font_size" in data:
-            self.on_font_size_changed({"size": data["font_size"]})
-        
-        if "sidebar_width" in data:
-            self.on_sidebar_width_changed({"width": data["sidebar_width"]})
-        
-        if "language" in data:
-            self.on_language_changed({"language": data["language"]})
-        
-        if "font_family" in data or "font_size" in data:
-            self.on_font_changed(data)
+        """واکنش به تغییر تنظیمات - نسخه ایمن"""
+        print(f"🔄 دریافت تنظیمات جدید: {list(data.keys())}")
         
         # ذخیره تنظیمات در config
         for key, value in data.items():
             self.config.set(key, value)
         
-        # انتشار رویداد برای سایر ماژول‌ها
-        self.event_bus.publish("settings_updated", data)
+        # اعمال تغییرات با ترتیب و مدیریت بهتر
+        needs_full_refresh = False
+        
+        # اول زبان رو بررسی کن (نیاز به بازسازی کامل داره)
+        if "language" in data and data["language"] != self.language_manager.current_language:
+            print(f"🌍 تغییر زبان به: {data['language']}")
+            self.language_manager.set_language(data["language"])
+            needs_full_refresh = True
+        
+        # سپس تم
+        if "theme_mode" in data:
+            print(f"🎨 تغییر تم به: {data['theme_mode']}")
+            self.theme_mode = data["theme_mode"]
+            ctk.set_appearance_mode(self.theme_mode)
+        
+        # سپس سایدبار
+        if "sidebar_width" in data:
+            print(f"📏 تغییر عرض سایدبار به: {data['sidebar_width']}")
+            self.sidebar_width = data["sidebar_width"]
+            needs_full_refresh = True
+        
+        # در نهایت فونت
+        font_changed = False
+        font_data = {}
+        
+        if "font_size" in data:
+            print(f"🔤 تغییر سایز فونت به: {data['font_size']}")
+            self.font_size = data["font_size"]
+            self.font_manager.set_font_size(self.font_size)
+            font_changed = True
+            font_data["font_size"] = data["font_size"]
+        
+        if "font_family" in data:
+            print(f"🔤 تغییر فونت به: {data['font_family']}")
+            self.font_manager.set_font_family(data["font_family"])
+            font_changed = True
+            font_data["font_family"] = data["font_family"]
+        
+        # اگر نیاز به بازسازی کامل بود
+        if needs_full_refresh:
+            print("🔄 بازسازی کامل UI به دلیل تغییرات اساسی")
+            self.safe_refresh_ui()
+        elif font_changed:
+            print("🔤 انتشار event تغییر فونت")
+            # انتشار event فونت با تأخیر برای جلوگیری از race condition
+            self.after(100, lambda: self.event_bus.publish("font_changed", font_data))
+        
+        # انتشار event برای سایر ماژول‌ها
+        self.after(150, lambda: self.event_bus.publish("settings_updated", data))
     
     def update_all_fonts(self):
-        """به روزرسانی فونت تمام ویجت‌ها در برنامه"""
+        """به روزرسانی فونت تمام ویجت‌ها - نسخه کاملاً ایمن"""
         try:
-            # به روزرسانی فونت در ویجت‌های اصلی
-            self.apply_font_to_widgets(self)
+            print("🔤 شروع به روزرسانی فونت‌ها...")
             
-            # به روزرسانی فونت در سایدبار
-            self.apply_font_to_widgets(self.sidebar)
+            # لیست ایمن از ویجت‌های اصلی
+            main_widgets = []
             
-            # به روزرسانی فونت در status bar
-            self.apply_font_to_widgets(self.status_bar)
+            # فقط ویجت‌های اصلی که وجود دارند رو جمع آوری کن
+            if self.winfo_exists():
+                main_widgets.append(self)
             
-            # به روزرسانی فونت در content frame
-            self.apply_font_to_widgets(self.content_frame)
+            if hasattr(self, 'sidebar') and self.sidebar.winfo_exists():
+                main_widgets.append(self.sidebar)
             
-            # به روزرسانی فونت در ماژول فعال
-            if self.current_module:
-                self.apply_font_to_widgets(self.current_module)
+            if hasattr(self, 'content_frame') and self.content_frame.winfo_exists():
+                main_widgets.append(self.content_frame)
             
-            print("✅ فونت‌ها در کل برنامه به روز شدند")
+            if hasattr(self, 'status_bar') and self.status_bar.winfo_exists():
+                main_widgets.append(self.status_bar)
+            
+            # آپدیت هر ویجت اصلی
+            for widget in main_widgets:
+                self.safe_apply_font_to_widget(widget)
+            
+            print("✅ فونت‌ها با موفقیت به روز شدند")
             
         except Exception as e:
-            print(f"❌ خطا در به روزرسانی فونت‌ها: {e}")
+            print(f"⚠️ خطا در به روزرسانی فونت‌ها: {e}")
     
-    def apply_font_to_widgets(self, parent_widget):
-        """اعمال فونت به تمام ویجت‌های فرزند"""
+    def safe_apply_font_to_widget(self, widget):
+        """اعمال ایمن فونت به یک ویجت و فرزندانش"""
         try:
-            for widget in parent_widget.winfo_children():
-                # اگر ویجت دارای ویژگی font است
-                if hasattr(widget, 'configure'):
-                    try:
-                        # سعی کن فونت جدید اعمال کنی
+            if not widget.winfo_exists():
+                return
+                
+            # اگر ویجت قابل تنظیم فونت هست
+            if hasattr(widget, 'configure'):
+                try:
+                    current_font = widget.cget("font") if hasattr(widget, 'cget') else None
+                    if current_font:
                         new_font = self.font_manager.get_font()
                         widget.configure(font=new_font)
-                    except:
-                        # اگر خطا داد، ادامه بده
-                        pass
+                except Exception:
+                    pass  # اگر تنظیم فونت خطا داد، ادامه بده
+            
+            # اعمال به فرزندان - با عمق محدود برای جلوگیری از infinite loop
+            try:
+                children = widget.winfo_children()
+                for child in children:
+                    if child.winfo_exists():
+                        self.safe_apply_font_to_widget(child)
+            except Exception:
+                pass
                 
-                # اعمال بازگشتی به فرزندان
-                if widget.winfo_children():
-                    self.apply_font_to_widgets(widget)
-                    
         except Exception as e:
             print(f"⚠️ خطا در اعمال فونت به ویجت: {e}")
     

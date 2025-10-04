@@ -11,7 +11,7 @@ class SettingsModule(ctk.CTkFrame):
         self.config = config
         self.settings = settings
         
-        # پیدا کردن language_manager
+        # پیدا کردن language_manager و font_manager
         if hasattr(app_instance, 'language_manager'):
             self.language_manager = app_instance.language_manager
         elif hasattr(app_instance, 'language'):
@@ -19,11 +19,18 @@ class SettingsModule(ctk.CTkFrame):
         else:
             from core.language_manager import LanguageManager
             self.language_manager = LanguageManager(config)
+            
+        if hasattr(app_instance, 'font_manager'):
+            self.font_manager = app_instance.font_manager
+        else:
+            from core.font_manager import FontManager
+            self.font_manager = FontManager(config)
+        
+        self.font_widgets = []  # لیست ویجت‌های فونت
         
         # ثبت event listener
         try:
-            self.app.event_bus.subscribe("language_changed", self.on_language_changed)
-            self.app.event_bus.subscribe("settings_updated", self.on_settings_updated)
+            self.app.event_bus.unsubscribe("font_changed", self.on_font_changed)
             self.app.event_bus.subscribe("font_changed", self.on_font_changed)
             print("✅ event listeners ثبت شدند")
         except Exception as e:
@@ -32,44 +39,83 @@ class SettingsModule(ctk.CTkFrame):
         # ایجاد UI
         self.create_ui()
     
-    def on_language_changed(self, data):
-        """واکنش به تغییر زبان"""
-        try:
-            self.language_manager.set_language(data["language"])
-            self.refresh_ui()
-        except Exception as e:
-            print(f"❌ خطا در on_language_changed: {e}")
-    
-    def on_settings_updated(self, data):
-        """واکنش به تغییر تنظیمات"""
-        if "language" in data:
-            try:
-                self.language_manager.set_language(data["language"])
-                self.refresh_ui()
-            except Exception as e:
-                print(f"❌ خطا در on_settings_updated: {e}")
+    def register_font_widget(self, widget, font_type="normal"):
+        """ثبت ویجت برای مدیریت فونت"""
+        self.font_widgets.append({
+            'widget': widget,
+            'font_type': font_type
+        })
     
     def on_font_changed(self, data):
-        """واکنش به تغییر فونت"""
+        """واکنش به تغییر فونت در تنظیمات - ایمن"""
         try:
-            print("🔄 تغییر فونت در ماژول تنظیمات")
-            self.update_fonts()
+            if not self.winfo_exists():
+                return
+                
+            print("🔤 دریافت درخواست تغییر فونت در تنظیمات")
+            
+            # تأخیر برای اطمینان از ثبات
+            self.after(50, self.safe_delayed_font_update)
+            
         except Exception as e:
-            print(f"❌ خطا در تغییر فونت تنظیمات: {e}")
-    
-    def refresh_ui(self):
-        """تازه‌سازی رابط کاربری"""
-        print("🔄 تازه‌سازی UI تنظیمات")
+            print(f"⚠️ خطا در مدیریت تغییر فونت تنظیمات: {e}")
+
+    def safe_delayed_font_update(self):
+        """آپدیت فونت با تأخیر ایمن در تنظیمات"""
         try:
-            self.create_ui()
+            if not self.winfo_exists():
+                return
+                
+            print("🔤 اجرای آپدیت فونت در تنظیمات")
+            self.update_all_fonts()
+            
         except Exception as e:
-            print(f"❌ خطا در refresh_ui: {e}")
+            print(f"⚠️ خطا در آپدیت فونت تنظیمات با تأخیر: {e}")
+
+    def update_all_fonts(self):
+        """به روزرسانی تمام فونت‌ها در تنظیمات"""
+        try:
+            if not self.winfo_exists():
+                return
+                
+            print("🔤 آپدیت تمام فونت‌های تنظیمات...")
+            
+            # آپدیت تمام ویجت‌های ثبت شده
+            for widget_info in self.font_widgets:
+                try:
+                    widget = widget_info['widget']
+                    font_type = widget_info['font_type']
+                    
+                    if widget.winfo_exists():
+                        if font_type == "title":
+                            new_font = self.font_manager.get_font(weight="bold")
+                        elif font_type == "heading":
+                            new_font = self.font_manager.get_font(weight="bold")
+                        elif font_type == "button":
+                            new_font = self.font_manager.get_font()
+                        else:
+                            new_font = self.font_manager.get_font()
+                        
+                        widget.configure(font=new_font)
+                except Exception as e:
+                    continue
+            
+            print(f"✅ {len(self.font_widgets)} فونت در تنظیمات به روز شدند")
+            
+        except Exception as e:
+            print(f"⚠️ خطا در آپدیت فونت تنظیمات: {e}")
     
     def create_ui(self):
         """ایجاد رابط کاربری تنظیمات"""
         # پاک کردن ویجت‌های موجود
         for widget in self.winfo_children():
-            widget.destroy()
+            try:
+                if widget.winfo_exists():
+                    widget.destroy()
+            except:
+                pass
+        
+        self.font_widgets = []  # ریست لیست فونت‌ها
         
         # فقط از GRID استفاده می‌کنیم
         self.grid_rowconfigure(0, weight=1)
@@ -87,12 +133,13 @@ class SettingsModule(ctk.CTkFrame):
         if self.language_manager.is_rtl():
             title_text = self.language_manager.reshape_text(title_text)
             
-        title_label = ctk.CTkLabel(
+        self.title_label = ctk.CTkLabel(
             self.main_frame, 
             text=title_text,
-            font=self.app.font_manager.get_font(20, "bold")
+            font=self.font_manager.get_font(weight="bold")
         )
-        title_label.grid(row=0, column=0, pady=20, sticky="ew")
+        self.title_label.grid(row=0, column=0, pady=20, sticky="ew")
+        self.register_font_widget(self.title_label, "title")
         
         # فریم محتوا
         self.content_frame = ctk.CTkFrame(self.main_frame)
@@ -113,12 +160,10 @@ class SettingsModule(ctk.CTkFrame):
             width=120,
             height=40,
             command=self.save_settings,
-            font=self.app.font_manager.get_font()
+            font=self.font_manager.get_font()
         )
         self.save_button.grid(row=2, column=0, pady=30)
-        
-        # اعمال فونت‌ها
-        self.update_fonts()
+        self.register_font_widget(self.save_button, "button")
         
         print("✅ UI تنظیمات با موفقیت ایجاد شد")
     
@@ -181,8 +226,9 @@ class SettingsModule(ctk.CTkFrame):
                 self.content_frame,
                 text=label_text,
                 anchor="e" if self.language_manager.is_rtl() else "w",
-                font=self.app.font_manager.get_font()
+                font=self.font_manager.get_font()
             )
+            self.register_font_widget(label)
             
             # ایجاد ویجت
             if widget_type == "combobox":
@@ -234,11 +280,12 @@ class SettingsModule(ctk.CTkFrame):
                     variable=var,
                     state="readonly",
                     width=200,
-                    font=self.app.font_manager.get_font()
+                    font=self.font_manager.get_font()
                 )
                 widget.set(current_display)
                 widget.actual_values = actual_values
                 widget.display_values = display_values
+                self.register_font_widget(widget)
                 
             elif widget_type == "switch":
                 var = ctk.BooleanVar(value=bool(current_value))
@@ -254,16 +301,10 @@ class SettingsModule(ctk.CTkFrame):
                 # برای RTL: برچسب در راست، ویجت در چپ
                 label.grid(row=i, column=1, padx=20, pady=10, sticky="e")
                 widget.grid(row=i, column=0, padx=20, pady=10, sticky="w")
-                self.language_manager.set_widget_rtl(label)
-                if hasattr(widget, 'configure'):
-                    self.language_manager.set_widget_rtl(widget)
             else:
                 # برای LTR: برچسب در چپ، ویجت در راست
                 label.grid(row=i, column=0, padx=20, pady=10, sticky="w")
                 widget.grid(row=i, column=1, padx=20, pady=10, sticky="w")
-                self.language_manager.set_widget_ltr(label)
-                if hasattr(widget, 'configure'):
-                    self.language_manager.set_widget_ltr(widget)
             
             self.widget_vars[key] = {
                 'var': var,
@@ -272,7 +313,7 @@ class SettingsModule(ctk.CTkFrame):
             }
     
     def save_settings(self):
-        """ذخیره تنظیمات"""
+        """ذخیره تنظیمات - با مدیریت بهتر eventها"""
         try:
             new_settings = {}
             
@@ -302,92 +343,21 @@ class SettingsModule(ctk.CTkFrame):
             if 'backup_interval' in new_settings:
                 new_settings['backup_interval'] = int(new_settings['backup_interval'])
             
-            print(f"💾 ذخیره تنظیمات: {new_settings}")
+            print(f"💾 ذخیره تنظیمات: {list(new_settings.keys())}")
             
             # ذخیره در فایل
             self.save_settings_to_file(new_settings)
             
-            # انتشار رویداد
+            # انتشار رویداد - فقط یک بار!
+            print("🎯 انتشار event تنظیمات تغییر کرده")
             self.app.event_bus.publish("settings_changed", new_settings)
             
-            # نمایش پیام موفقیت با ترازبندی صحیح
-            success_text = self.language_manager.get_text("success")
-            saved_text = self.language_manager.get_text("changes_saved")
-            
-            # ایجاد پنجره پیغام سفارشی برای کنترل ترازبندی
-            message_window = ctk.CTkToplevel(self)
-            message_window.title(success_text)
-            message_window.geometry("300x150")
-            message_window.transient(self)
-            message_window.grab_set()
-            
-            # مرکز پنجره
-            message_window.grid_rowconfigure(0, weight=1)
-            message_window.grid_columnconfigure(0, weight=1)
-            
-            # متن پیغام
-            message_label = ctk.CTkLabel(
-                message_window,
-                text=saved_text,
-                font=self.app.font_manager.get_font(14),
-                wraplength=250
-            )
-            
-            # دکمه OK
-            ok_button = ctk.CTkButton(
-                message_window,
-                text="OK",
-                command=message_window.destroy,
-                width=80,
-                font=self.app.font_manager.get_font()
-            )
-            
-            # تنظیم ترازبندی بر اساس زبان
-            if self.language_manager.is_rtl():
-                message_label.grid(row=0, column=0, padx=20, pady=10)
-                ok_button.grid(row=1, column=0, pady=10)
-                message_label.configure(anchor="e", justify="right")
-                self.language_manager.set_widget_rtl(message_label)
-                self.language_manager.set_widget_rtl(ok_button)
-            else:
-                message_label.grid(row=0, column=0, padx=20, pady=10)
-                ok_button.grid(row=1, column=0, pady=10)
-                message_label.configure(anchor="w", justify="left")
-                self.language_manager.set_widget_ltr(message_label)
-                self.language_manager.set_widget_ltr(ok_button)
-            
-            # موقعیت دهی در مرکز
-            message_window.update_idletasks()
-            x = (message_window.winfo_screenwidth() // 2) - (message_window.winfo_width() // 2)
-            y = (message_window.winfo_screenheight() // 2) - (message_window.winfo_height() // 2)
-            message_window.geometry(f"+{x}+{y}")
+            # نمایش پیام موفقیت
+            self.show_success_message()
             
         except Exception as e:
             print(f"❌ خطا در ذخیره تنظیمات: {e}")
-            
-            # نمایش پیغام خطا
-            error_window = ctk.CTkToplevel(self)
-            error_window.title("خطا")
-            error_window.geometry("350x150")
-            error_window.transient(self)
-            error_window.grab_set()
-            
-            error_label = ctk.CTkLabel(
-                error_window,
-                text=f"خطا در ذخیره تنظیمات:\n{e}",
-                text_color="red",
-                wraplength=300,
-                font=self.app.font_manager.get_font()
-            )
-            error_label.pack(expand=True, padx=20, pady=20)
-            
-            ok_button = ctk.CTkButton(
-                error_window,
-                text="OK",
-                command=error_window.destroy,
-                font=self.app.font_manager.get_font()
-            )
-            ok_button.pack(pady=10)
+            self.show_error_message(e)
     
     def save_settings_to_file(self, settings):
         """ذخیره تنظیمات در فایل JSON"""
@@ -404,40 +374,81 @@ class SettingsModule(ctk.CTkFrame):
             print(f"❌ خطا در ذخیره فایل: {e}")
             raise
     
-    def update_fonts(self):
-        """به روزرسانی فونت در ماژول تنظیمات"""
-        try:
-            print("🔄 به روزرسانی فونت در ماژول تنظیمات")
-            self.apply_font_to_widgets(self)
-        except Exception as e:
-            print(f"❌ خطا در به روزرسانی فونت تنظیمات: {e}")
+    def show_success_message(self):
+        """نمایش پیام موفقیت"""
+        success_text = self.language_manager.get_text("success")
+        saved_text = self.language_manager.get_text("changes_saved")
+        
+        # ایجاد پنجره پیغام سفارشی برای کنترل ترازبندی
+        message_window = ctk.CTkToplevel(self)
+        message_window.title(success_text)
+        message_window.geometry("300x150")
+        message_window.transient(self)
+        message_window.grab_set()
+        
+        # مرکز پنجره
+        message_window.grid_rowconfigure(0, weight=1)
+        message_window.grid_columnconfigure(0, weight=1)
+        
+        # متن پیغام
+        message_label = ctk.CTkLabel(
+            message_window,
+            text=saved_text,
+            font=self.font_manager.get_font(),
+            wraplength=250
+        )
+        message_label.grid(row=0, column=0, padx=20, pady=10)
+        
+        # دکمه OK
+        ok_button = ctk.CTkButton(
+            message_window,
+            text="OK",
+            command=message_window.destroy,
+            width=80,
+            font=self.font_manager.get_font()
+        )
+        ok_button.grid(row=1, column=0, pady=10)
+        
+        # تنظیم ترازبندی بر اساس زبان
+        if self.language_manager.is_rtl():
+            message_label.configure(anchor="e", justify="right")
+        else:
+            message_label.configure(anchor="w", justify="left")
+        
+        # موقعیت دهی در مرکز
+        message_window.update_idletasks()
+        x = (message_window.winfo_screenwidth() // 2) - (message_window.winfo_width() // 2)
+        y = (message_window.winfo_screenheight() // 2) - (message_window.winfo_height() // 2)
+        message_window.geometry(f"+{x}+{y}")
     
-    def apply_font_to_widgets(self, parent_widget):
-        """اعمال فونت به تمام ویجت‌های فرزند"""
-        try:
-            for widget in parent_widget.winfo_children():
-                # اگر ویجت دارای ویژگی font است
-                if hasattr(widget, 'configure'):
-                    try:
-                        # دریافت فونت جدید
-                        new_font = self.app.font_manager.get_font()
-                        widget.configure(font=new_font)
-                    except Exception as e:
-                        # اگر خطا در اعمال فونت بود، ادامه بده
-                        pass
-                
-                # اعمال بازگشتی به فرزندان
-                if widget.winfo_children():
-                    self.apply_font_to_widgets(widget)
-                    
-        except Exception as e:
-            print(f"⚠️ خطا در اعمال فونت به ویجت تنظیمات: {e}")
+    def show_error_message(self, error):
+        """نمایش پیام خطا"""
+        error_window = ctk.CTkToplevel(self)
+        error_window.title("خطا")
+        error_window.geometry("350x150")
+        error_window.transient(self)
+        error_window.grab_set()
+        
+        error_label = ctk.CTkLabel(
+            error_window,
+            text=f"خطا در ذخیره تنظیمات:\n{error}",
+            text_color="red",
+            wraplength=300,
+            font=self.font_manager.get_font()
+        )
+        error_label.pack(expand=True, padx=20, pady=20)
+        
+        ok_button = ctk.CTkButton(
+            error_window,
+            text="OK",
+            command=error_window.destroy,
+            font=self.font_manager.get_font()
+        )
+        ok_button.pack(pady=10)
     
     def __del__(self):
         """تمیزکاری"""
         try:
-            self.app.event_bus.unsubscribe("language_changed", self.on_language_changed)
-            self.app.event_bus.unsubscribe("settings_updated", self.on_settings_updated)
             self.app.event_bus.unsubscribe("font_changed", self.on_font_changed)
         except:
             pass

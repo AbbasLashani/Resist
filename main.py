@@ -6,7 +6,8 @@ from bidi.algorithm import get_display
 import json
 
 # اضافه کردن مسیر ماژول‌ها به sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__)))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
 
 from core.app import ResearchAssistantApp
 

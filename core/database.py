@@ -55,11 +55,55 @@ class Database:
                 )
             ''')
             
+            # ایجاد جدول تسک‌ها (جدید)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    due_date TEXT,
+                    priority TEXT DEFAULT 'medium',
+                    completed BOOLEAN DEFAULT FALSE,
+                    category TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # ایجاد جدول اهداف (جدید)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    target_date TEXT,
+                    progress INTEGER DEFAULT 0,
+                    priority TEXT DEFAULT 'medium',
+                    category TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # ایجاد جدول پلن‌ها (جدید)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS plans (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    color TEXT DEFAULT '#2196F3',
+                    completed BOOLEAN DEFAULT FALSE,
+                    progress INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             conn.commit()
             conn.close()
+            print("✅ تمام جداول دیتابیس ایجاد شدند")
             
         except Exception as e:
-            print(f"خطا در ایجاد پایگاه داده: {e}")
+            print(f"❌ خطا در ایجاد پایگاه داده: {e}")
     
     def get_connection(self):
         """دریافت اتصال به پایگاه داده"""
