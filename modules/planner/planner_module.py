@@ -13,6 +13,10 @@ import matplotlib.dates as mdates
 from matplotlib.patches import Patch
 import numpy as np
 
+# Set matplotlib to use TkAgg backend
+import matplotlib
+matplotlib.use('TkAgg')
+
 class TaskStatus(Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
@@ -602,6 +606,25 @@ class AdvancedPlanner:
         if self.conn:
             self.conn.close()
 
+# Mock classes for missing dependencies
+class EventBus:
+    def subscribe(self, event, callback):
+        pass
+    
+    def publish(self, event, data):
+        pass
+
+class LanguageManager:
+    def is_rtl(self):
+        return True
+
+class FontManager:
+    def __init__(self, config=None):
+        pass
+    
+    def get_font(self, size=12, weight="normal"):
+        return ("Tahoma", size, weight)
+
 class PlanningModule(ctk.CTkFrame):
     def __init__(self, parent, app, config):
         super().__init__(parent, fg_color="transparent")
@@ -612,14 +635,16 @@ class PlanningModule(ctk.CTkFrame):
         # مدیریت زبان و فونت
         if hasattr(app, 'language_manager'):
             self.language_manager = app.language_manager
-        elif hasattr(app, 'language'):
-            self.language_manager = app.language
+        else:
+            self.language_manager = LanguageManager()
             
         if hasattr(app, 'font_manager'):
             self.font_manager = app.font_manager
         else:
-            from core.font_manager import FontManager
             self.font_manager = FontManager(config)
+        
+        if not hasattr(app, 'event_bus'):
+            self.app.event_bus = EventBus()
         
         # داده‌ها
         self.current_date = datetime.now()
@@ -659,6 +684,44 @@ class PlanningModule(ctk.CTkFrame):
             conn = sqlite3.connect('research_assistant.db')
             cursor = conn.cursor()
             
+            # ایجاد جداول اگر وجود ندارند
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    due_date TEXT,
+                    priority TEXT,
+                    completed BOOLEAN DEFAULT FALSE,
+                    category TEXT
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    target_date TEXT,
+                    progress INTEGER DEFAULT 0,
+                    priority TEXT,
+                    category TEXT
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS plans (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    color TEXT,
+                    completed BOOLEAN DEFAULT FALSE,
+                    progress INTEGER DEFAULT 0
+                )
+            ''')
+            
             # بارگذاری تسک‌ها
             cursor.execute('''
                 SELECT id, title, description, due_date, priority, completed, category 
@@ -683,6 +746,7 @@ class PlanningModule(ctk.CTkFrame):
             ''')
             self.plans = cursor.fetchall()
             
+            conn.commit()
             conn.close()
             print("✅ داده‌های برنامه‌ریزی بارگذاری شدند")
             
@@ -2949,7 +3013,8 @@ class PlanningModule(ctk.CTkFrame):
         tasks = []
         for task in self.tasks:
             if task[3]:
-                task_date = datetime.strptime(task[3], '%Y-%m-%d')
+                date_str = task[3].split()[0]  # فقط قسمت تاریخ را بگیرید
+                task_date = datetime.strptime(date_str, '%Y-%m-%d')
                 if start_date <= task_date <= end_date:
                     tasks.append(task)
         return tasks
@@ -3765,3 +3830,26 @@ class PlanningModule(ctk.CTkFrame):
     def update_fonts(self):
         """به‌روزرسانی فونت‌ها"""
         self.setup_ui()
+
+# Test the module
+if __name__ == "__main__":
+    class MockApp:
+        def __init__(self):
+            self.language_manager = LanguageManager()
+            self.font_manager = FontManager()
+            self.event_bus = EventBus()
+    
+    class MockConfig:
+        pass
+    
+    root = ctk.CTk()
+    root.title("Advanced Planning Module Test")
+    root.geometry("1200x800")
+    
+    app = MockApp()
+    config = MockConfig()
+    
+    planning_module = PlanningModule(root, app, config)
+    planning_module.pack(fill="both", expand=True)
+    
+    root.mainloop()

@@ -19,5 +19,7 @@
     "module_development": "ماژول {} در حال توسعه است",
     "notes_development": "ماژول یادداشت‌ها به زودی اضافه خواهد شد",
     "persian": "فارسی",
-    "english": "انگلیسی"
+    "english": "انگلیسی",
+    "datasheets": "دیتاشیت‌ها",
+
 }

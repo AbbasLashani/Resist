@@ -8,7 +8,7 @@ class Database:
         self.init_database()
     
     def init_database(self):
-        """ایجاد جداول پایگاه داده در صورت عدم وجود"""
+        """ایجاد جداول پایگاه داده اصلی - بدون جدول notes"""
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
@@ -29,17 +29,8 @@ class Database:
                 )
             ''')
             
-            # ایجاد جدول یادداشت‌ها
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS notes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL,
-                    content TEXT,
-                    tags TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+            # حذف جدول یادداشت‌ها از اینجا - به دیتابیس جداگانه منتقل می‌شود
+            # CREATE TABLE IF NOT EXISTS notes - این خط حذف شد
             
             # ایجاد جدول برنامه‌ریزی
             cursor.execute('''
@@ -55,7 +46,7 @@ class Database:
                 )
             ''')
             
-            # ایجاد جدول تسک‌ها (جدید)
+            # ایجاد جدول تسک‌ها
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +60,7 @@ class Database:
                 )
             ''')
             
-            # ایجاد جدول اهداف (جدید)
+            # ایجاد جدول اهداف
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS goals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,7 +74,7 @@ class Database:
                 )
             ''')
             
-            # ایجاد جدول پلن‌ها (جدید)
+            # ایجاد جدول پلن‌ها
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS plans (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,10 +91,10 @@ class Database:
             
             conn.commit()
             conn.close()
-            print("✅ تمام جداول دیتابیس ایجاد شدند")
+            print("✅ تمام جداول دیتابیس اصلی (بدون یادداشت‌ها) ایجاد شدند")
             
         except Exception as e:
-            print(f"❌ خطا در ایجاد پایگاه داده: {e}")
+            print(f"❌ خطا در ایجاد پایگاه داده اصلی: {e}")
     
     def get_connection(self):
         """دریافت اتصال به پایگاه داده"""
