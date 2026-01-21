@@ -1,0 +1,10 @@
+{
+    "theme_mode": "system",
+    "font_size": 16,
+    "sidebar_width": 300,
+    "language": "fa",
+    "auto_save": true,
+    "notifications": true,
+    "backup_interval": 24,
+    "font_family": "Vazirmatn"
+}

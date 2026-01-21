@@ -1,7 +1,28 @@
 {
-    "theme": "default",
+    "app": {
+        "name": "Research Assistant",
+        "version": "1.0.0",
+        "language": "fa",
+        "default_module": "dashboard"
+    },
+    "database": {
+        "path": "data/research_assistant.db",
+        "backup_enabled": true,
+        "backup_path": "backups/"
+    },
+    "theme": {
+        "default_mode": "system",
+        "default_color_theme": "blue",
+        "animation_enabled": true,
+        "font_family": "Vazirmatn",
+        "font_size": 14
+    },
+    "font_size": 16,
+    "theme_mode": "system",
+    "sidebar_width": 300,
     "language": "fa",
-    "recent_files": [],
-    "user_preferences": {},
-    "database_path": "research_db.sqlite"
+    "auto_save": true,
+    "notifications": true,
+    "backup_interval": 24,
+    "font_family": "Vazirmatn"
 }

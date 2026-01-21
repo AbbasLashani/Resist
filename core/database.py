@@ -1,128 +1,101 @@
 import sqlite3
-from pathlib import Path
-import logging
-
-logger = logging.getLogger(__name__)
+import os
 
 class Database:
     def __init__(self, config):
         self.config = config
-        db_path = config.get("database_path", "research_db.sqlite")
-        self.connection = sqlite3.connect(db_path)
-        self.init_tables()
+        self.db_file = "research_assistant.db"
+        self.init_database()
     
-    def init_tables(self):
-        """ایجاد جداول پایگاه داده در صورت عدم وجود"""
-        cursor = self.connection.cursor()
-        
-        cursor.execute('''
-                CREATE TABLE IF NOT EXISTS datasheets (
+    def init_database(self):
+        """ایجاد جداول پایگاه داده اصلی - بدون جدول notes"""
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            # ایجاد جدول مقالات
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS papers (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
-                    category TEXT,
+                    authors TEXT,
+                    journal TEXT,
+                    year INTEGER,
+                    abstract TEXT,
                     tags TEXT,
-                    status TEXT DEFAULT 'برنامه‌ریزی شده',
                     file_path TEXT,
-                    url TEXT,  -- فیلد جدید برای لینک
-                    notes TEXT,
-                    added_date DATETIME DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            # جدول پروژه‌های تحقیقاتی
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS research_projects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                description TEXT,
-                created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_date DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-                # جدول ارتباط پروژه‌ها و مقالات
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS research_project_mapers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id INTEGER,
-                paper_id INTEGER,
-                added_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (project_id) REFERENCES research_projects (id),
-                FOREIGN KEY (paper_id) REFERENCES papers (id),
-                UNIQUE(project_id, paper_id)
-            )
-        ''')
-        # جدول مقالات
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS papers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                authors TEXT,
-                publication_date TEXT,
-                abstract TEXT,
-                file_path TEXT UNIQUE,
-                tags TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # جدول یادداشت‌ها
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                paper_id INTEGER,
-                content TEXT NOT NULL,
-                page_number INTEGER,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (paper_id) REFERENCES papers (id)
-            )
-        ''')
-        
-        # جدول برنامه‌ریزی مطالعه
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS study_plans (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                paper_id INTEGER,
-                planned_date TEXT,
-                completed BOOLEAN DEFAULT FALSE,
-                time_spent INTEGER DEFAULT 0,
-                FOREIGN KEY (paper_id) REFERENCES papers (id)
-            )
-        ''')
-        
-        self.connection.commit()
-        logger.info("جداول پایگاه داده با موفقیت ایجاد شدند")
-    
-    def execute_query(self, query, parameters=()):
-        """اجرای یک query و بازگشت نتیجه"""
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(query, parameters)
-            self.connection.commit()
-            return cursor
+            
+            # حذف جدول یادداشت‌ها از اینجا - به دیتابیس جداگانه منتقل می‌شود
+            # CREATE TABLE IF NOT EXISTS notes - این خط حذف شد
+            
+            # ایجاد جدول برنامه‌ریزی
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS planner (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    due_date DATE,
+                    priority INTEGER,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # ایجاد جدول تسک‌ها
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    due_date TEXT,
+                    priority TEXT DEFAULT 'medium',
+                    completed BOOLEAN DEFAULT FALSE,
+                    category TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # ایجاد جدول اهداف
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    target_date TEXT,
+                    progress INTEGER DEFAULT 0,
+                    priority TEXT DEFAULT 'medium',
+                    category TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # ایجاد جدول پلن‌ها
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS plans (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    color TEXT DEFAULT '#2196F3',
+                    completed BOOLEAN DEFAULT FALSE,
+                    progress INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            print("✅ تمام جداول دیتابیس اصلی (بدون یادداشت‌ها) ایجاد شدند")
+            
         except Exception as e:
-            logger.error(f"خطا در اجرای query: {e}")
-            raise
+            print(f"❌ خطا در ایجاد پایگاه داده اصلی: {e}")
     
-    def fetch_all(self, query, parameters=()):
-        """اجرای query و بازگشت تمامی نتایج"""
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(query, parameters)
-            return cursor.fetchall()
-        except Exception as e:
-            logger.error(f"خطا در fetch_all: {e}")
-            return []
-    
-    def fetch_one(self, query, parameters=()):
-        """اجرای query و بازگشت یک نتیجه"""
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(query, parameters)
-            return cursor.fetchone()
-        except Exception as e:
-            logger.error(f"خطا در fetch_one: {e}")
-            return None
-    
-    def close(self):
-        """بستن اتصال به پایگاه داده"""
-        self.connection.close()
-        logger.info("اتصال به پایگاه داده بسته شد")
+    def get_connection(self):
+        """دریافت اتصال به پایگاه داده"""
+        return sqlite3.connect(self.db_file)
